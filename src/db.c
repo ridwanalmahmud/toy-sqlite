@@ -25,16 +25,64 @@ void close_input_buffer(input_buffer *input_buffer) {
     free(input_buffer);
 }
 
-int main(int argc, char *argv[]) {
+meta_command_result do_meta_command(input_buffer *input_buffer) {
+    if (strcmp(input_buffer->buffer, ".exit") == 0) {
+        close_input_buffer(input_buffer);
+        exit(EXIT_SUCCESS);
+    } else {
+        return META_COMMAND_UNRECOGNIZED_COMMAND;
+    }
+}
+
+prepare_result prepare_statement(input_buffer *input_buffer, statement *statement) {
+    if (strncmp(input_buffer->buffer, "insert", 6) == 0) {
+        statement->type = STATEMENT_INSERT;
+        return PREPARE_SUCCESS;
+    }
+    if (strncmp(input_buffer->buffer, "select", 6) == 0) {
+        statement->type = STATEMENT_SELECT;
+        return PREPARE_SUCCESS;
+    }
+
+    return PREPARE_UNRECOGNIZED_STATEMENT;
+}
+
+void execute_statement(statement* statement) {
+    switch (statement->type) {
+        case (STATEMENT_INSERT):
+            printf("INSERT?\n");
+            break;
+        case (STATEMENT_SELECT):
+            printf("SELECT?\n");
+            break;
+    }
+}
+
+int main() {
     input_buffer *input_buffer = new_input_buffer();
     while(true) {
         printf("db > ");
         read_input(input_buffer);
-        if (strcmp(input_buffer->buffer, ".exit") == 0) {
-            close_input_buffer(input_buffer);
-            exit(EXIT_SUCCESS);
-        } else {
-            printf("Unrecognized command '%s'.\n", input_buffer->buffer);
+        if (input_buffer->buffer[0] == '.') {
+            switch (do_meta_command(input_buffer)) {
+                case (META_COMMAND_SUCCESS):
+                    continue;
+                case (META_COMMAND_UNRECOGNIZED_COMMAND):
+                    printf("Unrecognized command '%s'\n", input_buffer->buffer);
+                    continue;
+            }
         }
+
+        statement statement;
+        switch (prepare_statement(input_buffer, &statement)) {
+            case (PREPARE_SUCCESS):
+                break;
+            case (PREPARE_UNRECOGNIZED_STATEMENT):
+                printf("Unrecognized keyword at start of '%s'\n", input_buffer->buffer);
+                continue;
+        }
+
+        execute_statement(&statement);
+        printf("Executed\n");
     }
 }
