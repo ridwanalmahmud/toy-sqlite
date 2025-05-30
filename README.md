@@ -1,5 +1,7 @@
 ### Prerequisite
-- `gcc`
+```
+pacman -S make gcc
+```
 
 ### Makefile
 
@@ -7,7 +9,7 @@
 ```
 make
 ```
-- Run the executable
+- Make and Run the executable
 ```
 make run
 ```

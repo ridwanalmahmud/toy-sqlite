@@ -14,8 +14,13 @@ $(BINARY): $(CFILES)
 	@mkdir -p bin
 	$(CC) $(CFLAGS) $(CFILES) -o $@
 
+# Run with arguments: `make run arg1 arg2`
 run: $(BINARY)
-	@$(BINARY)
+	@$(BINARY) $(filter-out $@,$(MAKECMDGOALS))
+
+# Prevent Make from interpreting args as targets
+%:
+	@:
 
 build-test: $(TESTBINARY)
 
@@ -24,7 +29,7 @@ $(TESTBINARY): $(BINARY) $(TESTFILES)
 	$(CC) $(CFLAGS) $(TESTFILES) -o $@
 
 run-test: $(TESTBINARY)
-	@$(TESTBINARY)
+	@$(TESTBINARY) $(filter-out $@,$(MAKECMDGOALS))
 
 test: build-test run-test
 

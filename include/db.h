@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #define COLUMN_USERNAME_SIZE 32
 #define COLUMN_EMAIL_SIZE 255
@@ -50,7 +53,14 @@ typedef struct {
 } statement;
 
 typedef struct {
+    int file_descriptor;
+    uint32_t file_length;
+    void *pages[TABLE_MAX_PAGES];
+} pager;
+
+typedef struct {
     uint32_t num_rows;
+    pager *pager;
     void *pages[TABLE_MAX_PAGES];
 } table;
 
@@ -75,7 +85,11 @@ void print_row(row* row);
 void serialize_row(row* source, void* destination);
 void deserialize_row(void *source, row* destination);
 void* row_slot(table* table, uint32_t row_num);
-table* new_table();
+table* db_open(const char *filename);
 void free_table(table* table);
 execute_result execute_insert(statement* statement, table* table);
 execute_result execute_select(statement* statement, table* table);
+void* get_page(pager* pager, uint32_t page_num);
+pager* pager_open(const char* filename);
+void pager_flush(pager* pager, uint32_t page_num, uint32_t size);
+void db_close(table* table);
