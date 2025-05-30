@@ -60,14 +60,14 @@ test_table_full() {
   input+=".exit"
 
   # Extract the FIRST "Table full" error
+  echo "Running test: Table Full"
   local output=$(echo -e "$input" | ./bin/db | grep -m1 "Error: Table full.")
 
-  # if [[ "$output" == "db > Error: Table full." ]]; then
-  #   echo -e "${GREEN}PASS${NC}: Table Full"
-  # else
-  #   echo -e "${RED}FAIL${NC}: Table Full"
-  # fi
-  run_test "Table Full" "$input" "$output"
+  if [[ "$output" == "db > Error: Table full." ]]; then
+    echo -e "${GREEN}PASS${NC}: Table Full"
+  else
+    echo -e "${RED}FAIL${NC}: Table Full"
+  fi
 }
 
 test_max_length_strings() {
