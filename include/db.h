@@ -64,6 +64,12 @@ typedef struct {
     void *pages[TABLE_MAX_PAGES];
 } table;
 
+typedef struct {
+    table *table;
+    uint32_t row_num;
+    bool end_of_table;
+} cursor;
+
 const uint32_t ID_SIZE = size_of_attribute(row, id);
 const uint32_t USERNAME_SIZE = size_of_attribute(row, username);
 const uint32_t EMAIL_SIZE = size_of_attribute(row, email);
@@ -75,21 +81,36 @@ const uint32_t PAGE_SIZE = 4096;
 const uint32_t ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
 const uint32_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
 
+// buffer functions
 input_buffer *new_input_buffer();
 void read_input(input_buffer *input_buffer);
 void close_input_buffer(input_buffer *input_buffer);
+
+// VM functions
 meta_command_result do_meta_command(input_buffer *input_buffer, table *table);
+// statement parsing functions
 prepare_result prepare_statement(input_buffer *input_buffer, statement *statement);
+prepare_result prepare_insert(input_buffer *input_buffer, statement *statement);
 execute_result execute_statement(statement* statement, table *table);
+execute_result execute_insert(statement* statement, table* table);
+execute_result execute_select(statement* statement, table* table);
+
+// database row functions
 void print_row(row* row);
 void serialize_row(row* source, void* destination);
 void deserialize_row(void *source, row* destination);
-void* row_slot(table* table, uint32_t row_num);
+
+// database file reader
 table* db_open(const char *filename);
-void free_table(table* table);
-execute_result execute_insert(statement* statement, table* table);
-execute_result execute_select(statement* statement, table* table);
+void db_close(table* table);
+
+// pager functions
 void* get_page(pager* pager, uint32_t page_num);
 pager* pager_open(const char* filename);
 void pager_flush(pager* pager, uint32_t page_num, uint32_t size);
-void db_close(table* table);
+
+// cursor functions
+cursor* table_start(table* table);
+cursor* table_end(table* table);
+void* cursor_value(cursor* cursor);
+void cursor_advance(cursor* cursor);
