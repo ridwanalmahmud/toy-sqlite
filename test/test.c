@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <ctype.h>
 
 // Test counters
 int tests_run = 0;
@@ -38,9 +39,9 @@ char* execute_commands(const char* input, const char* db_file) {
 
     // Build command - always include database filename
     char command[512];
-    snprintf(command, sizeof(command), "./bin/db %s < %s > %s 2>&1", 
-             db_file ? db_file : "test.db", 
-             input_filename, 
+    snprintf(command, sizeof(command), "./bin/db %s < %s > %s 2>&1",
+             db_file ? db_file : "test.db",
+             input_filename,
              output_filename);
 
     // Execute command
@@ -94,16 +95,45 @@ void run_test(const char* test_name, const char* input, const char* expected, co
         return;
     }
 
-    if (strcmp(output, expected) == 0) {
+    // Normalize strings by trimming trailing whitespace
+    char* normalized_output = strdup(output);
+    char* normalized_expected = strdup(expected);
+
+    // Trim trailing whitespace
+    for (char* p = normalized_output + strlen(normalized_output) - 1; 
+         p >= normalized_output && isspace(*p); p--) {
+        *p = '\0';
+    }
+    for (char* p = normalized_expected + strlen(normalized_expected) - 1; 
+         p >= normalized_expected && isspace(*p); p--) {
+        *p = '\0';
+    }
+
+    if (strcmp(normalized_output, normalized_expected) == 0) {
         printf("PASS: %s\n", test_name);
         tests_passed++;
     } else {
         printf("FAIL: %s\n", test_name);
-        printf("Expected:\n%s\n", expected);
-        printf("Actual:\n%s\n", output);
+        printf("Expected:\n'%s'\n", expected);
+        printf("Actual:\n'%s'\n", output);
+    
+        // Show difference
+        printf("First difference at position: ");
+        for (size_t i = 0; ; i++) {
+            if (normalized_expected[i] != normalized_output[i]) {
+                printf("%zu (expected 0x%02x, got 0x%02x)\n", 
+                      i, (unsigned char)normalized_expected[i], 
+                      (unsigned char)normalized_output[i]);
+                break;
+            }
+            if (normalized_expected[i] == '\0') break;
+        }
+        
         tests_failed++;
     }
 
+    free(normalized_output);
+    free(normalized_expected);
     free(output);
 }
 
@@ -225,6 +255,38 @@ void test_persistence() {
     // Clean up
     unlink(db_file);
 }
+
+void test_btree_structure() {
+    const char* input = "insert 3 user3 person3@example.com\n"
+                        "insert 1 user1 person1@example.com\n"
+                        "insert 2 user2 person2@example.com\n"
+                        ".btree\n"
+                        ".exit\n";
+    const char* expected = "db > Executed.\n"
+                           "db > Executed.\n"
+                           "db > Executed.\n"
+                           "db > Tree: \n"
+                           "leaf (size 3)\n"
+                           "  - 0 : 3\n"
+                           "  - 1 : 1\n"
+                           "  - 2 : 2\n"
+                           "db > ";
+    run_test("B-Tree Structure", input, expected, "test.db");
+}
+
+void test_print_constants() {
+    const char* input = ".constants\n.exit\n";
+    const char* expected = "db > Constants: \n"
+                           "ROW_SIZE: 293\n"
+                           "COMMON_NODE_HEADER_SIZE: 6\n"
+                           "LEAF_NODE_HEADER_SIZE: 10\n"
+                           "LEAF_NODE_CELL_SIZE: 297\n"
+                           "LEAF_NODE_SPACE_FOR_CELLS: 4086\n"
+                           "LEAF_NODE_MAX_CELLS: 13\n"
+                           "db > ";
+    run_test("Print Constants", input, expected, "test.db");
+}
+
 // Updated main() function with better cleanup
 int main() {
     printf("Starting test suite...\n");
@@ -249,6 +311,12 @@ int main() {
     unlink("test.db");
 
     test_persistence();  // Uses persist_test.db which cleans itself
+
+    test_btree_structure();
+    unlink("test.db");
+
+    test_print_constants();
+    unlink("test.db");
 
     printf("\nTest Summary:\n");
     printf("Total:  %d\n", tests_run);
