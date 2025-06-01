@@ -11,9 +11,13 @@ make
 ```
 - Make and Run the executable
 ```
-make run
+make run <db_name>
 ```
-- Remove the executables
+- Remove the object files directory
+```
+make clean-obj
+```
+- Remove the executables and th obj dir
 ```
 make clean
 ```
@@ -28,4 +32,22 @@ make run-test
 - Build and run the tests
 ```
 make test
+```
+
+### Supported commands
+- Print the constants
+```
+.constants
+```
+- View the internal btree structure
+```
+.btree
+```
+- Insert into the database
+```
+insert <id> <key> <value>
+```
+- To print out the database
+```
+.select
 ```
