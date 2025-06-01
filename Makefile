@@ -1,39 +1,78 @@
+# Compiler and flags
 CC = gcc
-INCDIRS = -I.
+INCDIRS = -Iinclude
 OPT = -O1
 CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT)
 
-CFILES = src/db.c
-TESTFILES = test/test.c
-BINARY = bin/db
-TESTBINARY = test/dbtest
+# Directories
+SRC_DIR = src
+OBJ_DIR = obj
+BIN_DIR = bin
+INC_DIR = include
+TEST_DIR = test
 
-all: $(BINARY)
+# Executables
+EXEC = $(BIN_DIR)/db
+TEST_EXEC = $(TEST_DIR)/dbtest
 
-$(BINARY): $(CFILES)
-	@mkdir -p bin
-	$(CC) $(CFLAGS) $(CFILES) -o $@
+# Source files
+SRCS = $(wildcard $(SRC_DIR)/*.c)
+OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 
-# Run with arguments: `make run arg1 arg2`
-run: $(BINARY)
-	@$(BINARY) $(filter-out $@,$(MAKECMDGOALS))
+# Phony targets
+.PHONY: all run test build-test clean clean-obj
 
-# Prevent Make from interpreting args as targets
+# Default target
+all: $(EXEC)
+
+# Rule to build main executable only if it doesn't exist
+$(EXEC): | $(BIN_DIR)
+	@if [ ! -f "$(EXEC)" ]; then \
+		echo "Building database executable..."; \
+		mkdir -p $(OBJ_DIR); \
+		for src in $(SRCS); do \
+			obj=$(OBJ_DIR)/$$(basename $${src%.c}.o); \
+			$(CC) $(CFLAGS) -c $$src -o $$obj; \
+		done; \
+		$(CC) $(CFLAGS) $(OBJS) -o $(EXEC); \
+	else \
+		echo "Database executable already exists"; \
+	fi
+
+# Rule to build test executable only if it doesn't exist
+$(TEST_EXEC): | $(TEST_DIR)
+	@if [ ! -f "$(TEST_EXEC)" ]; then \
+		echo "Building test executable..."; \
+		$(CC) $(CFLAGS) $(wildcard $(TEST_DIR)/*.c) -o $(TEST_EXEC); \
+	else \
+		echo "Test executable already exists"; \
+	fi
+
+# Directory creation
+$(BIN_DIR) $(TEST_DIR):
+	mkdir -p $@
+
+# Run command - uses existing executable or builds if missing
+run: $(EXEC)
+	@$(EXEC) $(filter-out $@,$(MAKECMDGOALS))
+
+# Test command - uses existing test executable or builds if missing
+test: $(TEST_EXEC)
+	@$(TEST_EXEC) $(filter-out $@,$(MAKECMDGOALS))
+
+# Build test explicitly
+build-test: $(TEST_EXEC)
+
+# Clean object files only
+clean-obj:
+	rm -rf $(OBJ_DIR)
+	@echo "Object files removed"
+
+# Clean everything
+clean: clean-obj
+	rm -rf $(BIN_DIR) $(TEST_EXEC)
+	@echo "All build artifacts removed"
+
+# Handle arguments
 %:
 	@:
-
-build-test: $(TESTBINARY)
-
-$(TESTBINARY): $(BINARY) $(TESTFILES)
-	@mkdir -p test
-	$(CC) $(CFLAGS) $(TESTFILES) -o $@
-
-run-test: $(TESTBINARY)
-	@$(TESTBINARY) $(filter-out $@,$(MAKECMDGOALS))
-
-test: build-test run-test
-
-clean:
-	rm -f $(BINARY) $(TESTBINARY)
-
-.PHONY: all run build-test run-test test clean
