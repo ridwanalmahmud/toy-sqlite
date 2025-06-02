@@ -13,7 +13,7 @@
 #define COLUMN_USERNAME_SIZE 32
 #define COLUMN_EMAIL_SIZE 255
 #define TABLE_MAX_PAGES 100
-#define size_of_attribute(Struct, Attribute) sizeof(((Struct*)0)->Attribute)
+#define size_of_attribute(Struct, Attribute) sizeof(((Struct *)0)->Attribute)
 
 typedef struct {
     char *buffer;
@@ -61,12 +61,12 @@ void read_input(input_buffer *input_buffer);
 void close_input_buffer(input_buffer *input_buffer);
 
 // database file reader
-table* db_open(const char *filename);
-void db_close(table* table);
+table *db_open(const char *filename);
+void db_close(table *table);
 
 // database row functions
-void print_row(row* row);
-void serialize_row(row* source, void* destination);
-void deserialize_row(void *source, row* destination);
+void print_row(row *row);
+void serialize_row(row *source, void *destination);
+void deserialize_row(void *source, row *destination);
 
 #endif // !DB_H

@@ -19,7 +19,8 @@ typedef enum {
 
 // VM functions
 meta_command_result do_meta_command(input_buffer *input_buffer, table *table);
-prepare_result prepare_statement(input_buffer *input_buffer, statement *statement);
+prepare_result prepare_statement(input_buffer *input_buffer,
+                                 statement *statement);
 prepare_result prepare_insert(input_buffer *input_buffer, statement *statement);
 
 #endif // !VM_H

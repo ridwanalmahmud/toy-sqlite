@@ -18,20 +18,21 @@ meta_command_result do_meta_command(input_buffer *input_buffer, table *table) {
     }
 }
 
-prepare_result prepare_insert(input_buffer *input_buffer, statement *statement) {
+prepare_result prepare_insert(input_buffer *input_buffer,
+                              statement *statement) {
     statement->type = STATEMENT_INSERT;
 
-    char* keyword = strtok(input_buffer->buffer, " ");
-    char* id_string = strtok(NULL, " ");
-    char* username = strtok(NULL, " ");
-    char* email = strtok(NULL, " ");
+    char *keyword = strtok(input_buffer->buffer, " ");
+    char *id_string = strtok(NULL, " ");
+    char *username = strtok(NULL, " ");
+    char *email = strtok(NULL, " ");
 
     if (id_string == NULL || username == NULL || email == NULL) {
         return PREPARE_SYNTAX_ERROR;
     }
 
     int id = atoi(id_string);
-    if ( id < 0) {
+    if (id < 0) {
         return PREPARE_NEGATIVE_ID;
     }
     if (strlen(username) > COLUMN_USERNAME_SIZE) {
@@ -48,7 +49,8 @@ prepare_result prepare_insert(input_buffer *input_buffer, statement *statement) 
     return PREPARE_SUCCESS;
 }
 
-prepare_result prepare_statement(input_buffer *input_buffer, statement *statement) {
+prepare_result prepare_statement(input_buffer *input_buffer,
+                                 statement *statement) {
     if (strncmp(input_buffer->buffer, "insert", 6) == 0) {
         return prepare_insert(input_buffer, statement);
     }

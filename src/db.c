@@ -12,7 +12,8 @@ input_buffer *new_input_buffer() {
 }
 
 void read_input(input_buffer *input_buffer) {
-    ssize_t bytes_read = getline(&(input_buffer->buffer), &(input_buffer->buffer_length), stdin);
+    ssize_t bytes_read =
+        getline(&(input_buffer->buffer), &(input_buffer->buffer_length), stdin);
     if (bytes_read <= 0) {
         printf("Error reading input\n");
         exit(EXIT_FAILURE);
@@ -27,25 +28,25 @@ void close_input_buffer(input_buffer *input_buffer) {
     free(input_buffer);
 }
 
-void print_row(row* row){
+void print_row(row *row) {
     printf("(%d | %s | %s)\n", row->id, row->username, row->email);
 }
 
-void serialize_row(row* source, void* destination) {
+void serialize_row(row *source, void *destination) {
     memcpy(destination + ID_OFFSET, &(source->id), ID_SIZE);
     memcpy(destination + USERNAME_OFFSET, &(source->username), USERNAME_SIZE);
     memcpy(destination + EMAIL_OFFSET, &(source->email), EMAIL_SIZE);
 }
 
-void deserialize_row(void *source, row* destination) {
+void deserialize_row(void *source, row *destination) {
     memcpy(&(destination->id), source + ID_OFFSET, ID_SIZE);
     memcpy(&(destination->username), source + USERNAME_OFFSET, USERNAME_SIZE);
     memcpy(&(destination->email), source + EMAIL_OFFSET, EMAIL_SIZE);
 }
 
-table* db_open(const char *filename) {
+table *db_open(const char *filename) {
     pager *pager = pager_open(filename);
-    table *cur_table = (table*)malloc(sizeof(table));
+    table *cur_table = (table *)malloc(sizeof(table));
     cur_table->pager = pager;
     cur_table->root_page_num = 0;
 
@@ -57,7 +58,7 @@ table* db_open(const char *filename) {
     return cur_table;
 }
 
-void db_close(table* table) {
+void db_close(table *table) {
     pager *pager = table->pager;
 
     for (uint32_t i = 0; i < pager->num_pages; i++) {
@@ -76,7 +77,7 @@ void db_close(table* table) {
         exit(EXIT_FAILURE);
     }
     for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
-        void* page = pager->pages[i];
+        void *page = pager->pages[i];
         if (page) {
             free(page);
             pager->pages[i] = NULL;

@@ -1,6 +1,6 @@
 #include "../include/cursor.h"
 
-cursor* table_start(table* table) {
+cursor *table_start(table *table) {
     cursor *cur_cursor = malloc(sizeof(cursor));
     cur_cursor->table = table;
     cur_cursor->page_num = table->root_page_num;
@@ -13,7 +13,7 @@ cursor* table_start(table* table) {
     return cur_cursor;
 }
 
-cursor* table_end(table* table) {
+cursor *table_end(table *table) {
     cursor *cur_cursor = malloc(sizeof(cursor));
     cur_cursor->table = table;
     cur_cursor->page_num = table->root_page_num;
@@ -25,18 +25,18 @@ cursor* table_end(table* table) {
     return cur_cursor;
 }
 
-void* cursor_value(cursor* cursor) {
+void *cursor_value(cursor *cursor) {
     uint32_t page_num = cursor->page_num;
     void *page = get_page(cursor->table->pager, page_num);
 
     return leaf_node_value(page, cursor->cell_num);
 }
 
-void cursor_advance(cursor* cursor) {
+void cursor_advance(cursor *cursor) {
     uint32_t page_num = cursor->page_num;
     void *node = get_page(cursor->table->pager, page_num);
     cursor->cell_num += 1;
-    if (cursor->cell_num >= (*leaf_node_num_cells(node))){
+    if (cursor->cell_num >= (*leaf_node_num_cells(node))) {
         cursor->end_of_table = true;
     }
 }

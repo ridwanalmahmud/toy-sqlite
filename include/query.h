@@ -20,8 +20,8 @@ typedef struct {
     row row_to_insert;
 } statement;
 
-execute_result execute_insert(statement* statement, table* table);
-execute_result execute_select(statement* statement, table* table);
-execute_result execute_statement(statement* statement, table *table);
+execute_result execute_insert(statement *statement, table *table);
+execute_result execute_select(statement *statement, table *table);
+execute_result execute_statement(statement *statement, table *table);
 
 #endif // !QUERY_H

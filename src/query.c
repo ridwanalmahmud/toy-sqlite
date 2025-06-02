@@ -1,7 +1,7 @@
 #include "../include/query.h"
 
-execute_result execute_insert(statement* statement, table* table) {
-    void* node = get_page(table->pager, table->root_page_num);
+execute_result execute_insert(statement *statement, table *table) {
+    void *node = get_page(table->pager, table->root_page_num);
     if ((*leaf_node_num_cells(node) >= LEAF_NODE_MAX_CELLS)) {
         return EXECUTE_TABLE_FULL;
     }
@@ -14,7 +14,7 @@ execute_result execute_insert(statement* statement, table* table) {
     return EXECUTE_SUCCESS;
 }
 
-execute_result execute_select(statement* statement, table* table) {
+execute_result execute_select(statement *statement, table *table) {
     cursor *cursor = table_start(table);
     row row;
     while (!(cursor->end_of_table)) {
@@ -28,11 +28,11 @@ execute_result execute_select(statement* statement, table* table) {
     return EXECUTE_SUCCESS;
 }
 
-execute_result execute_statement(statement* statement, table *table) {
+execute_result execute_statement(statement *statement, table *table) {
     switch (statement->type) {
-        case (STATEMENT_INSERT):
-            return execute_insert(statement, table);
-        case (STATEMENT_SELECT):
-            return execute_select(statement, table);
+    case (STATEMENT_INSERT):
+        return execute_insert(statement, table);
+    case (STATEMENT_SELECT):
+        return execute_select(statement, table);
     }
 }
