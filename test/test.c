@@ -286,6 +286,20 @@ void test_btree_structure() {
     run_test("B-Tree Structure", input, expected, "test.db");
 }
 
+
+void test_duplicate_key() {
+    const char *input = "insert 1 user1 person1@example.com\n"
+                        "insert 1 user1 person1@example.com\n"
+                        "select\n"
+                        ".exit\n";
+    const char *expected = "db > Executed.\n"
+                           "db > Error: Duplicate key.\n"
+                           "db > (1 | user1 | person1@example.com)\n"
+                           "Executed.\n"
+                           "db > ";
+    run_test("Duplicate Key", input, expected, "test.db");
+}
+
 void test_print_constants() {
     const char *input = ".constants\n.exit\n";
     const char *expected = "db > Constants: \n"
@@ -325,6 +339,9 @@ int main() {
     test_persistence(); // Uses persist_test.db which cleans itself
 
     test_btree_structure();
+    unlink("test.db");
+
+    test_duplicate_key();
     unlink("test.db");
 
     test_print_constants();
