@@ -6,7 +6,7 @@
 
 // cursor functions
 cursor *table_start(table *table);
-cursor *table_end(table *table);
+cursor *table_find(table *table, uint32_t key);
 void *cursor_value(cursor *cursor);
 void cursor_advance(cursor *cursor);
 

@@ -46,7 +46,7 @@ void deserialize_row(void *source, row *destination) {
 
 table *db_open(const char *filename) {
     pager *pager = pager_open(filename);
-    table *cur_table = (table *)malloc(sizeof(table));
+    table *cur_table = malloc(sizeof(table));
     cur_table->pager = pager;
     cur_table->root_page_num = 0;
 
