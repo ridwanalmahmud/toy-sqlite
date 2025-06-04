@@ -278,10 +278,10 @@ void test_btree_structure() {
                            "db > Executed.\n"
                            "db > Executed.\n"
                            "db > Tree: \n"
-                           "leaf (size 3)\n"
-                           "  - 0 : 1\n"
-                           "  - 1 : 2\n"
-                           "  - 2 : 3\n"
+                           "- leaf (size 3)\n"
+                           "  - 1\n"
+                           "  - 2\n"
+                           "  - 3\n"
                            "db > ";
     run_test("B-Tree Structure", input, expected, "test.db");
 }

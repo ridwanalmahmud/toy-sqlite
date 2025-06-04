@@ -36,6 +36,14 @@ void *get_page(pager *pager, uint32_t page_num) {
     return pager->pages[page_num];
 }
 
+/*
+Until we start recycling free pages, new pages will always
+go onto the end of the database file
+*/
+uint32_t get_unused_page_num(pager *pager) {
+    return pager->num_pages;
+}
+
 pager *pager_open(const char *filename) {
     int fd = open(filename,
                   O_RDWR | // Read/Write mode
