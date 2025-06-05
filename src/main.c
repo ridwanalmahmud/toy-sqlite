@@ -15,6 +15,7 @@ int main(int argc, char *argv[]) {
     while (true) {
         printf("db > ");
         read_input(input_buffer);
+
         if (input_buffer->buffer[0] == '.') {
             switch (do_meta_command(input_buffer, table)) {
             case (META_COMMAND_SUCCESS):
@@ -39,7 +40,7 @@ int main(int argc, char *argv[]) {
             printf("Syntax error. Could not parse statement.\n");
             continue;
         case (PREPARE_UNRECOGNIZED_STATEMENT):
-            printf("Unrecognized keyword at start of '%s'\n",
+            printf("Unrecognized keyword at start of '%s'.\n",
                    input_buffer->buffer);
             continue;
         }
@@ -50,9 +51,6 @@ int main(int argc, char *argv[]) {
             break;
         case (EXECUTE_DUPLICATE_KEY):
             printf("Error: Duplicate key.\n");
-            break;
-        case (EXECUTE_TABLE_FULL):
-            printf("Error: Table full.\n");
             break;
         }
     }

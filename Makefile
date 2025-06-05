@@ -66,6 +66,7 @@ build-test: $(TEST_EXEC)
 # Clean object files only
 clean-obj:
 	rm -rf $(OBJ_DIR)
+	rm -rf test.db
 	@echo "Object files removed"
 
 # Clean test files only

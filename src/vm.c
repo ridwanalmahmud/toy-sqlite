@@ -6,11 +6,11 @@ meta_command_result do_meta_command(input_buffer *input_buffer, table *table) {
         db_close(table);
         exit(EXIT_SUCCESS);
     } else if (strcmp(input_buffer->buffer, ".btree") == 0) {
-        printf("Tree: \n");
+        printf("Tree:\n");
         print_tree(table->pager, 0, 0);
         return META_COMMAND_SUCCESS;
     } else if (strcmp(input_buffer->buffer, ".constants") == 0) {
-        printf("Constants: \n");
+        printf("Constants:\n");
         print_constants();
         return META_COMMAND_SUCCESS;
     } else {

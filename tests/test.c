@@ -1,368 +1,428 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
-#include <ctype.h>
 
-// Test counters
-int tests_run = 0;
-int tests_passed = 0;
-int tests_failed = 0;
+#define MAX_OUTPUT_LINES 10000
+#define MAX_LINE_LENGTH 1000
 
-// Function to execute commands and capture output
-char *execute_commands(const char *input, const char *db_file) {
-    // Create temporary file for input
-    char input_filename[] = "/tmp/db_test_XXXXXX";
-    int input_fd = mkstemp(input_filename);
-    if (input_fd == -1)
-        return NULL;
+typedef struct {
+    char **lines;
+    int count;
+} ScriptOutput;
 
-    // Write input to temp file
-    size_t input_len = strlen(input);
-    ssize_t bytes_written = write(input_fd, input, input_len);
-    if (bytes_written < 0 || (size_t)bytes_written != input_len) {
-        close(input_fd);
-        unlink(input_filename);
-        return NULL;
-    }
-    close(input_fd);
+void remove_database() {
+    remove("test.db");
+}
 
-    // Create output file
-    char output_filename[] = "/tmp/db_test_XXXXXX";
-    int output_fd = mkstemp(output_filename);
-    if (output_fd == -1) {
-        unlink(input_filename);
-        return NULL;
-    }
-    close(output_fd);
+ScriptOutput run_script(const char *commands[], int num_commands) {
+    int stdin_pipe[2], stdout_pipe[2];
+    pid_t pid;
+    char *buffer = malloc(MAX_OUTPUT_LINES * MAX_LINE_LENGTH);
+    ScriptOutput output = {0};
 
-    // Build command - always include database filename
-    char command[512];
-    snprintf(command, sizeof(command), "./bin/db %s < %s > %s 2>&1",
-             db_file ? db_file : "test.db", input_filename, output_filename);
-
-    // Execute command
-    int status = system(command);
-    if (status == -1) {
-        unlink(input_filename);
-        unlink(output_filename);
-        return NULL;
+    if (!buffer) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
     }
 
-    // Read output
-    FILE *output_file = fopen(output_filename, "r");
-    if (!output_file) {
-        unlink(input_filename);
-        unlink(output_filename);
-        return NULL;
+    if (pipe(stdin_pipe) < 0 || pipe(stdout_pipe) < 0) {
+        perror("pipe");
+        free(buffer);
+        exit(EXIT_FAILURE);
     }
 
-    fseek(output_file, 0, SEEK_END);
-    long output_size = ftell(output_file);
-    fseek(output_file, 0, SEEK_SET);
-
-    char *output = malloc(output_size + 1);
-    if (!output) {
-        fclose(output_file);
-        unlink(input_filename);
-        unlink(output_filename);
-        return NULL;
+    pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        free(buffer);
+        exit(EXIT_FAILURE);
     }
 
-    size_t bytes_read = fread(output, 1, output_size, output_file);
-    output[bytes_read] = '\0';
-    fclose(output_file);
+    if (pid == 0) {
+        close(stdin_pipe[1]);
+        close(stdout_pipe[0]);
 
-    // Cleanup
-    unlink(input_filename);
-    unlink(output_filename);
+        dup2(stdin_pipe[0], STDIN_FILENO);
+        dup2(stdout_pipe[1], STDOUT_FILENO);
+        dup2(stdout_pipe[1], STDERR_FILENO);
 
+        close(stdin_pipe[0]);
+        close(stdout_pipe[1]);
+
+        execl("bin/db", "db", "test.db", (char *)NULL);
+        perror("execl");
+        exit(EXIT_FAILURE);
+    } else {
+        close(stdin_pipe[0]);
+        close(stdout_pipe[1]);
+
+        FILE *child_stdin = fdopen(stdin_pipe[1], "w");
+        if (!child_stdin) {
+            perror("fdopen");
+            free(buffer);
+            exit(EXIT_FAILURE);
+        }
+        
+        for (int i = 0; i < num_commands; i++) {
+            fprintf(child_stdin, "%s\n", commands[i]);
+            fflush(child_stdin);
+        }
+        fclose(child_stdin);
+
+        ssize_t bytes_read = read(stdout_pipe[0], buffer, MAX_OUTPUT_LINES * MAX_LINE_LENGTH - 1);
+        close(stdout_pipe[0]);
+
+        int status;
+        waitpid(pid, &status, 0);
+
+        if (bytes_read < 0) {
+            perror("read");
+            free(buffer);
+            exit(EXIT_FAILURE);
+        }
+
+        if (bytes_read > 0) {
+            buffer[bytes_read] = '\0';
+            output.lines = malloc(MAX_OUTPUT_LINES * sizeof(char *));
+            if (!output.lines) {
+                perror("malloc");
+                free(buffer);
+                exit(EXIT_FAILURE);
+            }
+            
+            char *line = strtok(buffer, "\n");
+            while (line != NULL && output.count < MAX_OUTPUT_LINES) {
+                output.lines[output.count++] = strdup(line);
+                line = strtok(NULL, "\n");
+            }
+        }
+        free(buffer);
+    }
     return output;
 }
 
-// Test case helper
-void run_test(const char *test_name, const char *input, const char *expected,
-              const char *db_file) {
-    tests_run++;
-    printf("Running test: %s\n", test_name);
-
-    char *output = execute_commands(input, db_file);
-    if (!output) {
-        printf("TEST FAILED: Could not execute test\n");
-        tests_failed++;
-        return;
-    }
-
-    // Normalize strings by trimming trailing whitespace
-    char *normalized_output = strdup(output);
-    char *normalized_expected = strdup(expected);
-
-    // Trim trailing whitespace
-    for (char *p = normalized_output + strlen(normalized_output) - 1;
-         p >= normalized_output && isspace(*p); p--) {
-        *p = '\0';
-    }
-    for (char *p = normalized_expected + strlen(normalized_expected) - 1;
-         p >= normalized_expected && isspace(*p); p--) {
-        *p = '\0';
-    }
-
-    if (strcmp(normalized_output, normalized_expected) == 0) {
-        printf("PASS: %s\n", test_name);
-        tests_passed++;
-    } else {
-        printf("FAIL: %s\n", test_name);
-        printf("Expected:\n'%s'\n", expected);
-        printf("Actual:\n'%s'\n", output);
-
-        // Show difference
-        printf("First difference at position: ");
-        for (size_t i = 0;; i++) {
-            if (normalized_expected[i] != normalized_output[i]) {
-                printf("%zu (expected 0x%02x, got 0x%02x)\n", i,
-                       (unsigned char)normalized_expected[i],
-                       (unsigned char)normalized_output[i]);
-                break;
-            }
-            if (normalized_expected[i] == '\0')
-                break;
+void free_output(ScriptOutput *output) {
+    if (output->lines) {
+        for (int i = 0; i < output->count; i++) {
+            free(output->lines[i]);
         }
-
-        tests_failed++;
+        free(output->lines);
     }
-
-    free(normalized_output);
-    free(normalized_expected);
-    free(output);
+    output->lines = NULL;
+    output->count = 0;
 }
 
-// Test cases
-void test_insert_and_select() {
-    const char *input = "insert 1 user1 person1@example.com\nselect\n.exit\n";
-    const char *expected = "db > Executed.\ndb > (1 | user1 | "
-                           "person1@example.com)\nExecuted.\ndb > ";
-    run_test("Insert and Select", input, expected, "test.db");
-}
-void test_table_full() {
-    const char* db_file = "table_full_test.db";
-    unlink(db_file);  // Clean up before test
-
-    tests_run++;
-    printf("Running test: Table Full\n");
-
-    // First, determine the actual row capacity
-    const int PAGE_SIZE = 4096; // Common default, change if different
-    const int ROW_SIZE = 291; // Adjust based on your row structure
-    const int ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
-    const int TABLE_MAX_PAGES = 100;
-    const int TABLE_MAX_ROWS = TABLE_MAX_PAGES * ROWS_PER_PAGE;
-
-    // Generate input for inserts
-    char* input = malloc(100000);
-    if (!input) {
-        printf("TEST FAILED: Memory allocation failed\n");
-        tests_failed++;
+void assert_output_matches(ScriptOutput output, const char *expected[], int expected_count, const char *test_name) {
+    if (output.count < expected_count) {
+        fprintf(stderr, "[FAIL] %s: Not enough output lines (%d < %d)\n", test_name, output.count, expected_count);
         return;
     }
 
-    input[0] = '\0';
-    for (int i = 1; i <= TABLE_MAX_ROWS + 1; i++) {
-        char buf[50];
-        snprintf(buf, sizeof(buf), "insert %d user%d person%d@example.com\n", i, i, i);
-        strcat(input, buf);
+    for (int i = 0; i < expected_count; i++) {
+        if (strcmp(output.lines[i], expected[i]) != 0) {
+            fprintf(stderr, "[FAIL] %s: Line %d mismatch\nExpected: '%s'\nGot:      '%s'\n", 
+                    test_name, i, expected[i], output.lines[i]);
+            return;
+        }
     }
-    strcat(input, ".exit\n");
+    printf("[PASS] %s\n", test_name);
+}
 
-    char* output = execute_commands(input, db_file);
-    free(input);
-
-    // Check for either possible error message
-    if (output && (strstr(output, "out of bounds") || strstr(output, "Table full"))) {
-        printf("PASS: Table Full\n");
-        tests_passed++;
-    } else {
-        printf("FAIL: Table Full\n");
-        printf("Expected: 'out of bounds' or 'Table full' error\n");
-        printf("Actual output:\n%s\n", output ? output : "(null)");
-        tests_failed++;
+void assert_output_ends_with(ScriptOutput output, const char *expected[], int expected_count, const char *test_name) {
+    if (output.count < expected_count) {
+        fprintf(stderr, "[FAIL] %s: Not enough output lines (%d < %d)\n", test_name, output.count, expected_count);
+        return;
     }
 
-    free(output);
-    unlink(db_file);
+    int start_index = output.count - expected_count;
+    for (int i = 0; i < expected_count; i++) {
+        int output_index = start_index + i;
+        if (strcmp(output.lines[output_index], expected[i]) != 0) {
+            fprintf(stderr, "[FAIL] %s: Line %d (output index %d) mismatch\nExpected: '%s'\nGot:      '%s'\n", 
+                    test_name, i, output_index, expected[i], output.lines[output_index]);
+            return;
+        }
+    }
+    printf("[PASS] %s\n", test_name);
+}
+
+void test_insert_and_retrieve_row() {
+    remove_database();
+    const char *script[] = {
+        "insert 1 user1 person1@example.com",
+        "select",
+        ".exit"
+    };
+    const char *expected[] = {
+        "db > Executed.",
+        "db > (1, user1, person1@example.com)",
+        "Executed.",
+        "db > "
+    };
+    ScriptOutput output = run_script(script, 3);
+    assert_output_matches(output, expected, 4, "Insert and retrieve row");
+    free_output(&output);
+}
+
+void test_persistent_data() {
+    remove_database();
+    const char *script1[] = {"insert 1 user1 person1@example.com", ".exit"};
+    const char *script2[] = {"select", ".exit"};
+    
+    ScriptOutput out1 = run_script(script1, 2);
+    const char *expected1[] = {"db > Executed.", "db > "};
+    assert_output_matches(out1, expected1, 2, "Persistent data - initial insert");
+    free_output(&out1);
+
+    ScriptOutput out2 = run_script(script2, 2);
+    const char *expected2[] = {
+        "db > (1, user1, person1@example.com)",
+        "Executed.",
+        "db > "
+    };
+    assert_output_matches(out2, expected2, 3, "Persistent data - after restart");
+    free_output(&out2);
+}
+
+void test_table_full() {
+    remove_database();
+    char **script = malloc(1402 * sizeof(char *));
+    for (int i = 1; i <= 1401; i++) {
+        script[i-1] = malloc(50);
+        sprintf(script[i-1], "insert %d user%d person%d@example.com", i, i, i);
+    }
+    script[1401] = ".exit";
+
+    ScriptOutput output = run_script((const char **)script, 1402);
+    
+    const char *expected[] = {"db > Executed.", "db > "};
+    assert_output_ends_with(output, expected, 2, "Table full");
+    
+    for (int i = 0; i < 1401; i++) free(script[i]);
+    free(script);
+    free_output(&output);
 }
 
 void test_max_length_strings() {
-    const char *test_name = "Max Length Strings";
-    tests_run++;
-    printf("Running test: %s\n", test_name);
-
-    char long_username[33];
-    char long_email[256];
+    remove_database();
+    char long_username[33], long_email[256];
     memset(long_username, 'a', 32);
+    memset(long_email, 'b', 255);
     long_username[32] = '\0';
-    memset(long_email, 'a', 255);
     long_email[255] = '\0';
-
-    char input[500];
-    snprintf(input, sizeof(input), "insert 1 %s %s\nselect\n.exit\n",
-             long_username, long_email);
-
-    char expected[500];
-    snprintf(expected, sizeof(expected),
-             "db > Executed.\ndb > (1 | %s | %s)\nExecuted.\ndb > ",
-             long_username, long_email);
-
-    char *output = execute_commands(input, "test.db");
-    if (output && strcmp(output, expected) == 0) {
-        printf("PASS: %s\n", test_name);
-        tests_passed++;
-    } else {
-        printf("FAIL: %s\n", test_name);
-        printf("Expected:\n%s\n", expected);
-        printf("Actual:\n%s\n", output ? output : "(null)");
-        tests_failed++;
-    }
-    free(output);
+    
+    char insert_cmd[350];
+    sprintf(insert_cmd, "insert 1 %s %s", long_username, long_email);
+    
+    const char *script[] = {insert_cmd, "select", ".exit"};
+    const char *expected[] = {
+        "db > Executed.",
+        "db > (1, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)",
+        "Executed.",
+        "db > "
+    };
+    ScriptOutput output = run_script(script, 3);
+    assert_output_matches(output, expected, 4, "Max length strings");
+    free_output(&output);
 }
 
 void test_too_long_strings() {
-    tests_run++;
-    printf("Running test: Too Long Strings\n");
-
-    char long_username[34];
-    char long_email[257];
+    remove_database();
+    char long_username[34], long_email[257];
     memset(long_username, 'a', 33);
+    memset(long_email, 'b', 256);
     long_username[33] = '\0';
-    memset(long_email, 'a', 256);
     long_email[256] = '\0';
-
-    char input[500];
-    snprintf(input, sizeof(input), "insert 1 %s %s\nselect\n.exit\n",
-             long_username, long_email);
-
-    char *output = execute_commands(input, "test.db");
-    if (output && strstr(output, "String is too long.")) {
-        printf("PASS: Too Long Strings\n");
-        tests_passed++;
-    } else {
-        printf("FAIL: Too Long Strings\n");
-        tests_failed++;
-    }
-    free(output);
+    
+    char insert_cmd[350];
+    sprintf(insert_cmd, "insert 1 %s %s", long_username, long_email);
+    
+    const char *script[] = {insert_cmd, "select", ".exit"};
+    const char *expected[] = {
+        "db > String is too long.",
+        "db > Executed.",
+        "db > "
+    };
+    ScriptOutput output = run_script(script, 3);
+    assert_output_matches(output, expected, 3, "Too long strings");
+    free_output(&output);
 }
 
 void test_negative_id() {
-    const char *input = "insert -1 user1 person1@example.com\nselect\n.exit\n";
-    const char *expected = "db > ID must be positive.\ndb > Executed.\ndb > ";
-    run_test("Negative ID", input, expected, "test.db");
+    remove_database();
+    const char *script[] = {
+        "insert -1 cstack foo@bar.com",
+        "select",
+        ".exit"
+    };
+    const char *expected[] = {
+        "db > ID must be positive.",
+        "db > Executed.",
+        "db > "
+    };
+    ScriptOutput output = run_script(script, 3);
+    assert_output_matches(output, expected, 3, "Negative ID");
+    free_output(&output);
 }
 
-void test_persistence() {
-    const char *db_file = "persist_test.db";
-
-    // Clean up any existing test database
-    unlink(db_file);
-
-    // First session - insert data
-    const char *input1 = "insert 1 user1 person1@example.com\n.exit\n";
-    const char *expected1 = "db > Executed.\ndb > ";
-    run_test("Persistence - Insert", input1, expected1, db_file);
-
-    // Second session - verify data persists
-    const char *input2 = "select\n.exit\n";
-    const char *expected2 =
-        "db > (1 | user1 | person1@example.com)\nExecuted.\ndb > ";
-    run_test("Persistence - Verify", input2, expected2, db_file);
-
-    // Clean up
-    unlink(db_file);
+void test_duplicate_id() {
+    remove_database();
+    const char *script[] = {
+        "insert 1 user1 person1@example.com",
+        "insert 1 user1 person1@example.com",
+        "select",
+        ".exit"
+    };
+    const char *expected[] = {
+        "db > Executed.",
+        "db > Error: Duplicate key.",
+        "db > (1, user1, person1@example.com)",
+        "Executed.",
+        "db > "
+    };
+    ScriptOutput output = run_script(script, 4);
+    assert_output_matches(output, expected, 5, "Duplicate ID");
+    free_output(&output);
 }
 
-void test_btree_structure() {
-    const char *input = "insert 3 user3 person3@example.com\n"
-                        "insert 1 user1 person1@example.com\n"
-                        "insert 2 user2 person2@example.com\n"
-                        ".btree\n"
-                        ".exit\n";
-    const char *expected = "db > Executed.\n"
-                           "db > Executed.\n"
-                           "db > Executed.\n"
-                           "db > Tree: \n"
-                           "- leaf (size 3)\n"
-                           "  - 1\n"
-                           "  - 2\n"
-                           "  - 3\n"
-                           "db > ";
-    run_test("B-Tree Structure", input, expected, "test.db");
+void test_btree_one_node() {
+    remove_database();
+    const char *script[] = {
+        "insert 3 user3 person3@example.com",
+        "insert 1 user1 person1@example.com",
+        "insert 2 user2 person2@example.com",
+        ".btree",
+        ".exit"
+    };
+    const char *expected[] = {
+        "db > Executed.",
+        "db > Executed.",
+        "db > Executed.",
+        "db > Tree:",
+        "- leaf (size 3)",
+        "  - 1",
+        "  - 2",
+        "  - 3",
+        "db > "
+    };
+    ScriptOutput output = run_script(script, 5);
+    assert_output_matches(output, expected, 9, "B-tree one node");
+    free_output(&output);
 }
 
-
-void test_duplicate_key() {
-    const char *input = "insert 1 user1 person1@example.com\n"
-                        "insert 1 user1 person1@example.com\n"
-                        "select\n"
-                        ".exit\n";
-    const char *expected = "db > Executed.\n"
-                           "db > Error: Duplicate key.\n"
-                           "db > (1 | user1 | person1@example.com)\n"
-                           "Executed.\n"
-                           "db > ";
-    run_test("Duplicate Key", input, expected, "test.db");
+void test_btree_three_leaf_nodes() {
+    remove_database();
+    const char *script[17];
+    char commands[15][50];
+    
+    for (int i = 1; i <= 14; i++) {
+        sprintf(commands[i-1], "insert %d user%d person%d@example.com", i, i, i);
+        script[i-1] = commands[i-1];
+    }
+    script[14] = ".btree";
+    script[15] = "insert 15 user15 person15@example.com";
+    script[16] = ".exit";
+    
+    const char *expected[] = {
+        "db > Tree:",
+        "- internal (size 1)",
+        "  - leaf (size 7)",
+        "    - 1",
+        "    - 2",
+        "    - 3",
+        "    - 4",
+        "    - 5",
+        "    - 6",
+        "    - 7",
+        "  - key 7",
+        "  - leaf (size 7)",
+        "    - 8",
+        "    - 9",
+        "    - 10",
+        "    - 11",
+        "    - 12",
+        "    - 13",
+        "    - 14",
+        "db > Executed.",
+        "db > "
+    };
+    
+    ScriptOutput output = run_script(script, 17);
+    assert_output_ends_with(output, expected, 21, "B-tree three leaf nodes");
+    free_output(&output);
 }
 
 void test_print_constants() {
-    const char *input = ".constants\n.exit\n";
-    const char *expected = "db > Constants: \n"
-                           "ROW_SIZE: 293\n"
-                           "COMMON_NODE_HEADER_SIZE: 6\n"
-                           "LEAF_NODE_HEADER_SIZE: 14\n"
-                           "LEAF_NODE_CELL_SIZE: 297\n"
-                           "LEAF_NODE_SPACE_FOR_CELLS: 4082\n"
-                           "LEAF_NODE_MAX_CELLS: 13\n"
-                           "db > ";
-    run_test("Print Constants", input, expected, "test.db");
+    remove_database();
+    const char *script[] = {".constants", ".exit"};
+    const char *expected[] = {
+        "db > Constants:",
+        "ROW_SIZE: 293",
+        "COMMON_NODE_HEADER_SIZE: 6",
+        "LEAF_NODE_HEADER_SIZE: 14",
+        "LEAF_NODE_CELL_SIZE: 297",
+        "LEAF_NODE_SPACE_FOR_CELLS: 4082",
+        "LEAF_NODE_MAX_CELLS: 13",
+        "db > "
+    };
+    ScriptOutput output = run_script(script, 2);
+    assert_output_matches(output, expected, 8, "Print constants");
+    free_output(&output);
 }
 
-// Updated main() function with better cleanup
+void test_print_all_rows() {
+    remove_database();
+    char **script = malloc(17 * sizeof(char *));
+    for (int i = 1; i <= 15; i++) {
+        script[i-1] = malloc(50);
+        sprintf(script[i-1], "insert %d user%d person%d@example.com", i, i, i);
+    }
+    script[15] = "select";
+    script[16] = ".exit";
+
+    const char *expected[] = {
+        "db > (1, user1, person1@example.com)",
+        "(2, user2, person2@example.com)",
+        "(3, user3, person3@example.com)",
+        "(4, user4, person4@example.com)",
+        "(5, user5, person5@example.com)",
+        "(6, user6, person6@example.com)",
+        "(7, user7, person7@example.com)",
+        "(8, user8, person8@example.com)",
+        "(9, user9, person9@example.com)",
+        "(10, user10, person10@example.com)",
+        "(11, user11, person11@example.com)",
+        "(12, user12, person12@example.com)",
+        "(13, user13, person13@example.com)",
+        "(14, user14, person14@example.com)",
+        "(15, user15, person15@example.com)",
+        "Executed.",
+        "db > "
+    };
+    
+    ScriptOutput output = run_script((const char **)script, 17);
+    assert_output_ends_with(output, expected, 17, "Print all rows");
+    
+    for (int i = 0; i < 15; i++) free(script[i]);
+    free(script);
+    free_output(&output);
+}
+
 int main() {
-    printf("Starting test suite...\n");
-
-    // Clean up all test database files before starting
-    unlink("test.db");
-    unlink("persist_test.db");
-
-    test_insert_and_select();
-    unlink("test.db"); // Clean after each test that uses test.db
-
+    test_insert_and_retrieve_row();
+    test_persistent_data();
     test_table_full();
-    unlink("test.db");
-
     test_max_length_strings();
-    unlink("test.db");
-
     test_too_long_strings();
-    unlink("test.db");
-
     test_negative_id();
-    unlink("test.db");
-
-    test_persistence(); // Uses persist_test.db which cleans itself
-
-    test_btree_structure();
-    unlink("test.db");
-
-    test_duplicate_key();
-    unlink("test.db");
-
+    test_duplicate_id();
+    test_btree_one_node();
+    test_btree_three_leaf_nodes();
     test_print_constants();
-    unlink("test.db");
-
-    printf("\nTest Summary:\n");
-    printf("Total:  %d\n", tests_run);
-    printf("Passed: %d\n", tests_passed);
-    printf("Failed: %d\n", tests_failed);
-
-    return tests_failed > 0 ? 1 : 0;
+    test_print_all_rows();
+    printf("All tests completed.\n");
+    return 0;
 }

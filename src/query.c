@@ -1,12 +1,12 @@
 #include "../include/query.h"
 
 execute_result execute_insert(statement *statement, table *table) {
-    void *node = get_page(table->pager, table->root_page_num);
-    uint32_t num_cells = (*leaf_node_num_cells(node));
-
     row *row_to_insert = &(statement->row_to_insert);
     uint32_t key_to_insert = row_to_insert->id;
     cursor *cursor = table_find(table, key_to_insert);
+
+    void *node = get_page(table->pager, cursor->page_num);
+    uint32_t num_cells = *leaf_node_num_cells(node);
 
     if (cursor->cell_num < num_cells) {
         uint32_t key_at_index = *leaf_node_key(node, cursor->cell_num);
@@ -17,11 +17,14 @@ execute_result execute_insert(statement *statement, table *table) {
 
     leaf_node_insert(cursor, row_to_insert->id, row_to_insert);
 
+    free(cursor);
+
     return EXECUTE_SUCCESS;
 }
 
 execute_result execute_select(statement *statement, table *table) {
     cursor *cursor = table_start(table);
+
     row row;
     while (!(cursor->end_of_table)) {
         deserialize_row(cursor_value(cursor), &row);

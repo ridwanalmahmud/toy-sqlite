@@ -1,5 +1,16 @@
 #include "../include/cursor.h"
 
+cursor *table_find(table *table, uint32_t key) {
+    uint32_t root_page_num = table->root_page_num;
+    void *root_node = get_page(table->pager, root_page_num);
+
+    if (get_node_type(root_node) == NODE_LEAF) {
+        return leaf_node_find(table, root_page_num, key);
+    } else {
+        return internal_node_find(table, root_page_num, key);
+    }
+}
+
 cursor *table_start(table *table) {
     cursor *cursor = table_find(table, 0);
 
@@ -10,26 +21,16 @@ cursor *table_start(table *table) {
     return cursor;
 }
 
-cursor *table_find(table *table, uint32_t key) {
-    uint32_t root_page_num = table->root_page_num;
-    void *root_node = get_page(table->pager, root_page_num);
-    if (get_node_type(root_node) == NODE_LEAF) {
-        return leaf_node_find(table, root_page_num, key);
-    } else {
-        return internal_node_find(table, root_page_num, key);
-    }
-}
-
 void *cursor_value(cursor *cursor) {
     uint32_t page_num = cursor->page_num;
     void *page = get_page(cursor->table->pager, page_num);
-
     return leaf_node_value(page, cursor->cell_num);
 }
 
 void cursor_advance(cursor *cursor) {
     uint32_t page_num = cursor->page_num;
     void *node = get_page(cursor->table->pager, page_num);
+
     cursor->cell_num += 1;
     if (cursor->cell_num >= (*leaf_node_num_cells(node))) {
         /* Advance to next leaf node */

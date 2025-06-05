@@ -3,23 +3,25 @@
 #include "../include/btree.h"
 
 input_buffer *new_input_buffer() {
-    input_buffer *input_buf = malloc(sizeof(input_buffer));
-    input_buf->buffer = NULL;
-    input_buf->buffer_length = 0;
-    input_buf->input_length = 0;
+    input_buffer *input_buff = malloc(sizeof(input_buffer));
+    input_buff->buffer = NULL;
+    input_buff->buffer_length = 0;
+    input_buff->input_length = 0;
 
-    return input_buf;
+    return input_buff;
 }
 
 void read_input(input_buffer *input_buffer) {
     ssize_t bytes_read =
         getline(&(input_buffer->buffer), &(input_buffer->buffer_length), stdin);
+
     if (bytes_read <= 0) {
         printf("Error reading input\n");
         exit(EXIT_FAILURE);
     }
 
-    input_buffer->buffer_length = bytes_read - 1;
+    // Ignore trailing newline
+    input_buffer->input_length = bytes_read - 1;
     input_buffer->buffer[bytes_read - 1] = 0;
 }
 
@@ -29,7 +31,7 @@ void close_input_buffer(input_buffer *input_buffer) {
 }
 
 void print_row(row *row) {
-    printf("(%d | %s | %s)\n", row->id, row->username, row->email);
+    printf("(%d, %s, %s)\n", row->id, row->username, row->email);
 }
 
 void serialize_row(row *source, void *destination) {
@@ -46,11 +48,13 @@ void deserialize_row(void *source, row *destination) {
 
 table *db_open(const char *filename) {
     pager *pager = pager_open(filename);
+
     table *cur_table = malloc(sizeof(table));
     cur_table->pager = pager;
     cur_table->root_page_num = 0;
 
     if (pager->num_pages == 0) {
+        // New database file. Initialize page 0 as leaf node.
         void *root_node = get_page(pager, 0);
         initialize_leaf_node(root_node);
         set_node_root(root_node, true);
@@ -66,7 +70,6 @@ void db_close(table *table) {
         if (pager->pages[i] == NULL) {
             continue;
         }
-
         pager_flush(pager, i);
         free(pager->pages[i]);
         pager->pages[i] = NULL;
@@ -84,7 +87,6 @@ void db_close(table *table) {
             pager->pages[i] = NULL;
         }
     }
-
     free(pager);
     free(table);
 }
