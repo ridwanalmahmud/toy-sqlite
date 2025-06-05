@@ -89,10 +89,14 @@ uint32_t *internal_node_right_child(void *node);
 uint32_t *internal_node_cell(void *node, uint32_t cell_num);
 uint32_t *internal_node_child(void *node, uint32_t child_num);
 uint32_t *internal_node_key(void *node, uint32_t key_num);
-uint32_t get_node_max_key(void *node);
+uint32_t get_node_max_key(pager *pager, void *node);
 bool is_node_root(void *node);
 void set_node_root(void *node, bool is_root);
 cursor *internal_node_find(table *table, uint32_t page_num, uint32_t key);
 uint32_t *node_parent(void *node);
+void update_internal_node_key(void *node, uint32_t old_key, uint32_t new_key);
+void internal_node_insert(table *table,
+                          uint32_t parent_page_num,
+                          uint32_t child_page_num);
 
 #endif // !BTREE_H
