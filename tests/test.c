@@ -11,17 +11,17 @@
 typedef struct {
     char **lines;
     int count;
-} ScriptOutput;
+} script_output;
 
 void remove_database() {
     remove("test.db");
 }
 
-ScriptOutput run_script(const char *commands[], int num_commands) {
+script_output run_script(const char *commands[], int num_commands) {
     int stdin_pipe[2], stdout_pipe[2];
     pid_t pid;
     char *buffer = malloc(MAX_OUTPUT_LINES * MAX_LINE_LENGTH);
-    ScriptOutput output = {0};
+    script_output output = {0};
 
     if (!buffer) {
         perror("malloc");
@@ -65,14 +65,19 @@ ScriptOutput run_script(const char *commands[], int num_commands) {
             free(buffer);
             exit(EXIT_FAILURE);
         }
-        
+
         for (int i = 0; i < num_commands; i++) {
             fprintf(child_stdin, "%s\n", commands[i]);
             fflush(child_stdin);
         }
         fclose(child_stdin);
 
-        ssize_t bytes_read = read(stdout_pipe[0], buffer, MAX_OUTPUT_LINES * MAX_LINE_LENGTH - 1);
+        ssize_t total_bytes = 0;
+        ssize_t bytes_read;
+        while ((bytes_read = read(stdout_pipe[0], buffer + total_bytes, 
+                                MAX_OUTPUT_LINES * MAX_LINE_LENGTH - 1 - total_bytes)) > 0) {
+            total_bytes += bytes_read;
+        }
         close(stdout_pipe[0]);
 
         int status;
@@ -84,15 +89,15 @@ ScriptOutput run_script(const char *commands[], int num_commands) {
             exit(EXIT_FAILURE);
         }
 
-        if (bytes_read > 0) {
-            buffer[bytes_read] = '\0';
+        if (total_bytes > 0) {
+            buffer[total_bytes] = '\0';
             output.lines = malloc(MAX_OUTPUT_LINES * sizeof(char *));
             if (!output.lines) {
                 perror("malloc");
                 free(buffer);
                 exit(EXIT_FAILURE);
             }
-            
+
             char *line = strtok(buffer, "\n");
             while (line != NULL && output.count < MAX_OUTPUT_LINES) {
                 output.lines[output.count++] = strdup(line);
@@ -104,7 +109,7 @@ ScriptOutput run_script(const char *commands[], int num_commands) {
     return output;
 }
 
-void free_output(ScriptOutput *output) {
+void free_output(script_output *output) {
     if (output->lines) {
         for (int i = 0; i < output->count; i++) {
             free(output->lines[i]);
@@ -115,9 +120,9 @@ void free_output(ScriptOutput *output) {
     output->count = 0;
 }
 
-void assert_output_matches(ScriptOutput output, const char *expected[], int expected_count, const char *test_name) {
-    if (output.count < expected_count) {
-        fprintf(stderr, "[FAIL] %s: Not enough output lines (%d < %d)\n", test_name, output.count, expected_count);
+void assert_output_matches(script_output output, const char *expected[], int expected_count, const char *test_name) {
+    if (output.count != expected_count) {
+        fprintf(stderr, "[FAIL] %s: Expected %d lines, got %d\n", test_name, expected_count, output.count);
         return;
     }
 
@@ -131,7 +136,7 @@ void assert_output_matches(ScriptOutput output, const char *expected[], int expe
     printf("[PASS] %s\n", test_name);
 }
 
-void assert_output_ends_with(ScriptOutput output, const char *expected[], int expected_count, const char *test_name) {
+void assert_output_ends_with(script_output output, const char *expected[], int expected_count, const char *test_name) {
     if (output.count < expected_count) {
         fprintf(stderr, "[FAIL] %s: Not enough output lines (%d < %d)\n", test_name, output.count, expected_count);
         return;
@@ -162,7 +167,7 @@ void test_insert_and_retrieve_row() {
         "Executed.",
         "db > "
     };
-    ScriptOutput output = run_script(script, 3);
+    script_output output = run_script(script, 3);
     assert_output_matches(output, expected, 4, "Insert and retrieve row");
     free_output(&output);
 }
@@ -171,13 +176,13 @@ void test_persistent_data() {
     remove_database();
     const char *script1[] = {"insert 1 user1 person1@example.com", ".exit"};
     const char *script2[] = {"select", ".exit"};
-    
-    ScriptOutput out1 = run_script(script1, 2);
+
+    script_output out1 = run_script(script1, 2);
     const char *expected1[] = {"db > Executed.", "db > "};
     assert_output_matches(out1, expected1, 2, "Persistent data - initial insert");
     free_output(&out1);
 
-    ScriptOutput out2 = run_script(script2, 2);
+    script_output out2 = run_script(script2, 2);
     const char *expected2[] = {
         "db > (1, user1, person1@example.com)",
         "Executed.",
@@ -196,11 +201,11 @@ void test_table_full() {
     }
     script[1401] = ".exit";
 
-    ScriptOutput output = run_script((const char **)script, 1402);
-    
+    script_output output = run_script((const char **)script, 1402);
+
     const char *expected[] = {"db > Executed.", "db > "};
     assert_output_ends_with(output, expected, 2, "Table full");
-    
+
     for (int i = 0; i < 1401; i++) free(script[i]);
     free(script);
     free_output(&output);
@@ -213,18 +218,22 @@ void test_max_length_strings() {
     memset(long_email, 'b', 255);
     long_username[32] = '\0';
     long_email[255] = '\0';
-    
+
     char insert_cmd[350];
     sprintf(insert_cmd, "insert 1 %s %s", long_username, long_email);
-    
+
+    // Build expected row dynamically
+    char expected_row[600];
+    sprintf(expected_row, "db > (1, %s, %s)", long_username, long_email);
+
     const char *script[] = {insert_cmd, "select", ".exit"};
     const char *expected[] = {
         "db > Executed.",
-        "db > (1, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)",
+        expected_row,
         "Executed.",
         "db > "
     };
-    ScriptOutput output = run_script(script, 3);
+    script_output output = run_script(script, 3);
     assert_output_matches(output, expected, 4, "Max length strings");
     free_output(&output);
 }
@@ -236,17 +245,17 @@ void test_too_long_strings() {
     memset(long_email, 'b', 256);
     long_username[33] = '\0';
     long_email[256] = '\0';
-    
+
     char insert_cmd[350];
     sprintf(insert_cmd, "insert 1 %s %s", long_username, long_email);
-    
+
     const char *script[] = {insert_cmd, "select", ".exit"};
     const char *expected[] = {
         "db > String is too long.",
         "db > Executed.",
         "db > "
     };
-    ScriptOutput output = run_script(script, 3);
+    script_output output = run_script(script, 3);
     assert_output_matches(output, expected, 3, "Too long strings");
     free_output(&output);
 }
@@ -263,7 +272,7 @@ void test_negative_id() {
         "db > Executed.",
         "db > "
     };
-    ScriptOutput output = run_script(script, 3);
+    script_output output = run_script(script, 3);
     assert_output_matches(output, expected, 3, "Negative ID");
     free_output(&output);
 }
@@ -283,7 +292,7 @@ void test_duplicate_id() {
         "Executed.",
         "db > "
     };
-    ScriptOutput output = run_script(script, 4);
+    script_output output = run_script(script, 4);
     assert_output_matches(output, expected, 5, "Duplicate ID");
     free_output(&output);
 }
@@ -308,7 +317,7 @@ void test_btree_one_node() {
         "  - 3",
         "db > "
     };
-    ScriptOutput output = run_script(script, 5);
+    script_output output = run_script(script, 5);
     assert_output_matches(output, expected, 9, "B-tree one node");
     free_output(&output);
 }
@@ -317,7 +326,7 @@ void test_btree_three_leaf_nodes() {
     remove_database();
     const char *script[17];
     char commands[15][50];
-    
+
     for (int i = 1; i <= 14; i++) {
         sprintf(commands[i-1], "insert %d user%d person%d@example.com", i, i, i);
         script[i-1] = commands[i-1];
@@ -325,7 +334,7 @@ void test_btree_three_leaf_nodes() {
     script[14] = ".btree";
     script[15] = "insert 15 user15 person15@example.com";
     script[16] = ".exit";
-    
+
     const char *expected[] = {
         "db > Tree:",
         "- internal (size 1)",
@@ -349,8 +358,8 @@ void test_btree_three_leaf_nodes() {
         "db > Executed.",
         "db > "
     };
-    
-    ScriptOutput output = run_script(script, 17);
+
+    script_output output = run_script(script, 17);
     assert_output_ends_with(output, expected, 21, "B-tree three leaf nodes");
     free_output(&output);
 }
@@ -368,7 +377,7 @@ void test_print_constants() {
         "LEAF_NODE_MAX_CELLS: 13",
         "db > "
     };
-    ScriptOutput output = run_script(script, 2);
+    script_output output = run_script(script, 2);
     assert_output_matches(output, expected, 8, "Print constants");
     free_output(&output);
 }
@@ -402,10 +411,10 @@ void test_print_all_rows() {
         "Executed.",
         "db > "
     };
-    
-    ScriptOutput output = run_script((const char **)script, 17);
+
+    script_output output = run_script((const char **)script, 17);
     assert_output_ends_with(output, expected, 17, "Print all rows");
-    
+
     for (int i = 0; i < 15; i++) free(script[i]);
     free(script);
     free_output(&output);
