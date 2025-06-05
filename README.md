@@ -17,7 +17,11 @@ make run <db_name>
 ```
 make clean-obj
 ```
-- Remove the executables and th obj dir
+- Remove the test executable
+```
+make clean-test
+```
+- Remove the executables and the obj dir
 ```
 make clean
 ```

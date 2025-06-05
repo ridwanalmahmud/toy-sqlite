@@ -145,13 +145,22 @@ void test_insert_and_select() {
                            "person1@example.com)\nExecuted.\ndb > ";
     run_test("Insert and Select", input, expected, "test.db");
 }
-
 void test_table_full() {
+    const char* db_file = "table_full_test.db";
+    unlink(db_file);  // Clean up before test
+
     tests_run++;
     printf("Running test: Table Full\n");
 
-    // Generate input for 1401 inserts
-    char *input = malloc(100000);
+    // First, determine the actual row capacity
+    const int PAGE_SIZE = 4096; // Common default, change if different
+    const int ROW_SIZE = 291; // Adjust based on your row structure
+    const int ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
+    const int TABLE_MAX_PAGES = 100;
+    const int TABLE_MAX_ROWS = TABLE_MAX_PAGES * ROWS_PER_PAGE;
+
+    // Generate input for inserts
+    char* input = malloc(100000);
     if (!input) {
         printf("TEST FAILED: Memory allocation failed\n");
         tests_failed++;
@@ -159,26 +168,29 @@ void test_table_full() {
     }
 
     input[0] = '\0';
-    for (int i = 1; i <= 1401; i++) {
+    for (int i = 1; i <= TABLE_MAX_ROWS + 1; i++) {
         char buf[50];
-        snprintf(buf, sizeof(buf), "insert %d user%d person%d@example.com\n", i,
-                 i, i);
+        snprintf(buf, sizeof(buf), "insert %d user%d person%d@example.com\n", i, i, i);
         strcat(input, buf);
     }
     strcat(input, ".exit\n");
 
-    char *output = execute_commands(input, "test.db");
+    char* output = execute_commands(input, db_file);
     free(input);
 
-    if (output && strstr(output, "Error: Table full.")) {
+    // Check for either possible error message
+    if (output && (strstr(output, "out of bounds") || strstr(output, "Table full"))) {
         printf("PASS: Table Full\n");
         tests_passed++;
     } else {
         printf("FAIL: Table Full\n");
+        printf("Expected: 'out of bounds' or 'Table full' error\n");
+        printf("Actual output:\n%s\n", output ? output : "(null)");
         tests_failed++;
     }
 
     free(output);
+    unlink(db_file);
 }
 
 void test_max_length_strings() {

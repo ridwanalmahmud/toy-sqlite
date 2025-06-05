@@ -9,7 +9,7 @@ SRC_DIR = src
 OBJ_DIR = obj
 BIN_DIR = bin
 INC_DIR = include
-TEST_DIR = test
+TEST_DIR = tests
 
 # Executables
 EXEC = $(BIN_DIR)/db
@@ -68,8 +68,13 @@ clean-obj:
 	rm -rf $(OBJ_DIR)
 	@echo "Object files removed"
 
+# Clean test files only
+clean-test:
+	rm -rf $(TEST_EXEC)
+	@echo "Test files removed"
+
 # Clean everything
-clean: clean-obj
+clean: clean-obj clean-test
 	rm -rf $(BIN_DIR) $(TEST_EXEC)
 	@echo "All build artifacts removed"
 
