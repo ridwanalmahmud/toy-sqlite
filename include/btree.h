@@ -65,6 +65,8 @@ static const uint32_t INTERNAL_NODE_KEY_SIZE = sizeof(uint32_t);
 static const uint32_t INTERNAL_NODE_CHILD_SIZE = sizeof(uint32_t);
 static const uint32_t INTERNAL_NODE_CELL_SIZE =
     INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE;
+/* Keep this small for testing */
+static const uint32_t INTERNAL_NODE_MAX_CELLS = 3;
 
 // accessing leaf node fields
 uint32_t *leaf_node_num_cells(void *node);
@@ -91,5 +93,6 @@ uint32_t get_node_max_key(void *node);
 bool is_node_root(void *node);
 void set_node_root(void *node, bool is_root);
 cursor *internal_node_find(table *table, uint32_t page_num, uint32_t key);
+uint32_t *node_parent(void *node);
 
 #endif // !BTREE_H
