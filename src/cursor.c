@@ -1,16 +1,13 @@
 #include "../include/cursor.h"
 
 cursor *table_start(table *table) {
-    cursor *cur_cursor = malloc(sizeof(cursor));
-    cur_cursor->table = table;
-    cur_cursor->page_num = table->root_page_num;
-    cur_cursor->cell_num = 0;
+    cursor *cursor = table_find(table, 0);
 
-    void *root_node = get_page(table->pager, table->root_page_num);
-    uint32_t num_cells = *leaf_node_num_cells(root_node);
-    cur_cursor->end_of_table = (num_cells == 0);
+    void *node = get_page(table->pager, cursor->page_num);
+    uint32_t num_cells = *leaf_node_num_cells(node);
+    cursor->end_of_table = (num_cells == 0);
 
-    return cur_cursor;
+    return cursor;
 }
 
 cursor *table_find(table *table, uint32_t key) {
@@ -35,6 +32,14 @@ void cursor_advance(cursor *cursor) {
     void *node = get_page(cursor->table->pager, page_num);
     cursor->cell_num += 1;
     if (cursor->cell_num >= (*leaf_node_num_cells(node))) {
-        cursor->end_of_table = true;
+        /* Advance to next leaf node */
+        uint32_t next_page_num = *leaf_node_next_leaf(node);
+        if (next_page_num == 0) {
+            /* This was rightmost leaf */
+            cursor->end_of_table = true;
+        } else {
+            cursor->page_num = next_page_num;
+            cursor->cell_num = 0;
+        }
     }
 }

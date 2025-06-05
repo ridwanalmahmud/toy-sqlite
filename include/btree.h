@@ -22,8 +22,12 @@ static const uint8_t COMMON_NODE_HEADER_SIZE =
 // leaf node header layout
 static const uint32_t LEAF_NODE_NUM_CELLS_SIZE = sizeof(uint32_t);
 static const uint32_t LEAF_NODE_NUM_CELLS_OFFSET = COMMON_NODE_HEADER_SIZE;
-static const uint32_t LEAF_NODE_HEADER_SIZE =
-    COMMON_NODE_HEADER_SIZE + LEAF_NODE_NUM_CELLS_SIZE;
+static const uint32_t LEAF_NODE_NEXT_LEAF_SIZE = sizeof(uint32_t);
+static const uint32_t LEAF_NODE_NEXT_LEAF_OFFSET =
+    LEAF_NODE_NUM_CELLS_OFFSET + LEAF_NODE_NUM_CELLS_SIZE;
+static const uint32_t LEAF_NODE_HEADER_SIZE = COMMON_NODE_HEADER_SIZE +
+                                              LEAF_NODE_NUM_CELLS_SIZE +
+                                              LEAF_NODE_NEXT_LEAF_SIZE;
 
 // leaf node body layout
 static const uint32_t LEAF_NODE_KEY_SIZE = sizeof(uint32_t);
@@ -70,6 +74,7 @@ void *leaf_node_value(void *node, uint32_t cell_num);
 node_type get_node_type(void *node);
 void set_node_type(void *node, node_type type);
 cursor *leaf_node_find(table *table, uint32_t page_num, uint32_t key);
+uint32_t *leaf_node_next_leaf(void *node);
 void initialize_leaf_node(void *node);
 void initialize_internal_node(void *node);
 void leaf_node_insert(cursor *cursor, uint32_t key, row *value);
