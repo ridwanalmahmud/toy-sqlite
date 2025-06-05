@@ -8,20 +8,32 @@
 #define MAX_OUTPUT_LINES 10000
 #define MAX_LINE_LENGTH 1000
 
+// ANSI color codes
+#define COLOR_RED     "\x1b[31m"
+#define COLOR_GREEN   "\x1b[32m"
+#define COLOR_YELLOW  "\x1b[33m"
+#define COLOR_BLUE    "\x1b[34m"
+#define COLOR_MAGENTA "\x1b[35m"
+#define COLOR_CYAN    "\x1b[36m"
+#define COLOR_RESET   "\x1b[0m"
+
+#define BOLD         "\x1b[1m"
+#define BOLD_RESET   "\x1b[22m"
+
 typedef struct {
     char **lines;
     int count;
-} script_output;
+} ScriptOutput;
 
 void remove_database() {
     remove("test.db");
 }
 
-script_output run_script(const char *commands[], int num_commands) {
+ScriptOutput run_script(const char *commands[], int num_commands) {
     int stdin_pipe[2], stdout_pipe[2];
     pid_t pid;
     char *buffer = malloc(MAX_OUTPUT_LINES * MAX_LINE_LENGTH);
-    script_output output = {0};
+    ScriptOutput output = {0};
 
     if (!buffer) {
         perror("malloc");
@@ -109,7 +121,7 @@ script_output run_script(const char *commands[], int num_commands) {
     return output;
 }
 
-void free_output(script_output *output) {
+void free_output(ScriptOutput *output) {
     if (output->lines) {
         for (int i = 0; i < output->count; i++) {
             free(output->lines[i]);
@@ -120,41 +132,48 @@ void free_output(script_output *output) {
     output->count = 0;
 }
 
-void assert_output_matches(script_output output, const char *expected[], int expected_count, const char *test_name) {
+int assert_output_matches(ScriptOutput output, const char *expected[], int expected_count, const char *test_name) {
     if (output.count != expected_count) {
-        fprintf(stderr, "[FAIL] %s: Expected %d lines, got %d\n", test_name, expected_count, output.count);
-        return;
+        fprintf(stderr, COLOR_RED BOLD "[FAIL] " COLOR_RESET "%s: " COLOR_YELLOW "Expected %d lines, got %d\n" COLOR_RESET, 
+                test_name, expected_count, output.count);
+        return 0;
     }
 
     for (int i = 0; i < expected_count; i++) {
         if (strcmp(output.lines[i], expected[i]) != 0) {
-            fprintf(stderr, "[FAIL] %s: Line %d mismatch\nExpected: '%s'\nGot:      '%s'\n", 
-                    test_name, i, expected[i], output.lines[i]);
-            return;
+            fprintf(stderr, COLOR_RED BOLD "[FAIL] " COLOR_RESET "%s: " COLOR_YELLOW "Line %d mismatch\n" COLOR_RESET, test_name, i);
+            fprintf(stderr, COLOR_CYAN "Expected: " COLOR_GREEN "'%s'\n" COLOR_RESET, expected[i]);
+            fprintf(stderr, COLOR_CYAN "Got:      " COLOR_RED "'%s'\n" COLOR_RESET, output.lines[i]);
+            return 0;
         }
     }
-    printf("[PASS] %s\n", test_name);
+    printf(COLOR_GREEN BOLD "[PASS] " COLOR_RESET "%s\n", test_name);
+    return 1;
 }
 
-void assert_output_ends_with(script_output output, const char *expected[], int expected_count, const char *test_name) {
+int assert_output_ends_with(ScriptOutput output, const char *expected[], int expected_count, const char *test_name) {
     if (output.count < expected_count) {
-        fprintf(stderr, "[FAIL] %s: Not enough output lines (%d < %d)\n", test_name, output.count, expected_count);
-        return;
+        fprintf(stderr, COLOR_RED BOLD "[FAIL] " COLOR_RESET "%s: " COLOR_YELLOW "Not enough output lines (%d < %d)\n" COLOR_RESET, 
+                test_name, output.count, expected_count);
+        return 0;
     }
 
     int start_index = output.count - expected_count;
     for (int i = 0; i < expected_count; i++) {
         int output_index = start_index + i;
         if (strcmp(output.lines[output_index], expected[i]) != 0) {
-            fprintf(stderr, "[FAIL] %s: Line %d (output index %d) mismatch\nExpected: '%s'\nGot:      '%s'\n", 
-                    test_name, i, output_index, expected[i], output.lines[output_index]);
-            return;
+            fprintf(stderr, COLOR_RED BOLD "[FAIL] " COLOR_RESET "%s: " COLOR_YELLOW "Line %d (output index %d) mismatch\n" COLOR_RESET, 
+                    test_name, i, output_index);
+            fprintf(stderr, COLOR_CYAN "Expected: " COLOR_GREEN "'%s'\n" COLOR_RESET, expected[i]);
+            fprintf(stderr, COLOR_CYAN "Got:      " COLOR_RED "'%s'\n" COLOR_RESET, output.lines[output_index]);
+            return 0;
         }
     }
-    printf("[PASS] %s\n", test_name);
+    printf(COLOR_GREEN BOLD "[PASS] " COLOR_RESET "%s\n", test_name);
+    return 1;
 }
 
-void test_insert_and_retrieve_row() {
+int test_insert_and_retrieve_row() {
     remove_database();
     const char *script[] = {
         "insert 1 user1 person1@example.com",
@@ -167,32 +186,37 @@ void test_insert_and_retrieve_row() {
         "Executed.",
         "db > "
     };
-    script_output output = run_script(script, 3);
-    assert_output_matches(output, expected, 4, "Insert and retrieve row");
+    printf(COLOR_MAGENTA "\n=== Testing Insert and Retrieve Row ===\n" COLOR_RESET);
+    ScriptOutput output = run_script(script, 3);
+    int result = assert_output_matches(output, expected, 4, "Insert and retrieve row");
     free_output(&output);
+    return result;
 }
 
-void test_persistent_data() {
+int test_persistent_data() {
     remove_database();
     const char *script1[] = {"insert 1 user1 person1@example.com", ".exit"};
     const char *script2[] = {"select", ".exit"};
 
-    script_output out1 = run_script(script1, 2);
+    printf(COLOR_MAGENTA "\n=== Testing Persistent Data ===\n" COLOR_RESET);
+    ScriptOutput out1 = run_script(script1, 2);
     const char *expected1[] = {"db > Executed.", "db > "};
-    assert_output_matches(out1, expected1, 2, "Persistent data - initial insert");
+    int result1 = assert_output_matches(out1, expected1, 2, "Initial insert");
     free_output(&out1);
 
-    script_output out2 = run_script(script2, 2);
+    ScriptOutput out2 = run_script(script2, 2);
     const char *expected2[] = {
         "db > (1, user1, person1@example.com)",
         "Executed.",
         "db > "
     };
-    assert_output_matches(out2, expected2, 3, "Persistent data - after restart");
+    int result2 = assert_output_matches(out2, expected2, 3, "After restart");
     free_output(&out2);
+
+    return result1 && result2;
 }
 
-void test_table_full() {
+int test_table_full() {
     remove_database();
     char **script = malloc(1402 * sizeof(char *));
     for (int i = 1; i <= 1401; i++) {
@@ -201,17 +225,19 @@ void test_table_full() {
     }
     script[1401] = ".exit";
 
-    script_output output = run_script((const char **)script, 1402);
+    printf(COLOR_MAGENTA "\n=== Testing Table Full ===\n" COLOR_RESET);
+    ScriptOutput output = run_script((const char **)script, 1402);
 
     const char *expected[] = {"db > Executed.", "db > "};
-    assert_output_ends_with(output, expected, 2, "Table full");
+    int result = assert_output_ends_with(output, expected, 2, "Table full");
 
     for (int i = 0; i < 1401; i++) free(script[i]);
     free(script);
     free_output(&output);
+    return result;
 }
 
-void test_max_length_strings() {
+int test_max_length_strings() {
     remove_database();
     char long_username[33], long_email[256];
     memset(long_username, 'a', 32);
@@ -233,12 +259,15 @@ void test_max_length_strings() {
         "Executed.",
         "db > "
     };
-    script_output output = run_script(script, 3);
-    assert_output_matches(output, expected, 4, "Max length strings");
+
+    printf(COLOR_MAGENTA "\n=== Testing Max Length Strings ===\n" COLOR_RESET);
+    ScriptOutput output = run_script(script, 3);
+    int result = assert_output_matches(output, expected, 4, "Max length strings");
     free_output(&output);
+    return result;
 }
 
-void test_too_long_strings() {
+int test_too_long_strings() {
     remove_database();
     char long_username[34], long_email[257];
     memset(long_username, 'a', 33);
@@ -255,12 +284,15 @@ void test_too_long_strings() {
         "db > Executed.",
         "db > "
     };
-    script_output output = run_script(script, 3);
-    assert_output_matches(output, expected, 3, "Too long strings");
+
+    printf(COLOR_MAGENTA "\n=== Testing Too Long Strings ===\n" COLOR_RESET);
+    ScriptOutput output = run_script(script, 3);
+    int result = assert_output_matches(output, expected, 3, "Too long strings");
     free_output(&output);
+    return result;
 }
 
-void test_negative_id() {
+int test_negative_id() {
     remove_database();
     const char *script[] = {
         "insert -1 cstack foo@bar.com",
@@ -272,12 +304,15 @@ void test_negative_id() {
         "db > Executed.",
         "db > "
     };
-    script_output output = run_script(script, 3);
-    assert_output_matches(output, expected, 3, "Negative ID");
+
+    printf(COLOR_MAGENTA "\n=== Testing Negative ID ===\n" COLOR_RESET);
+    ScriptOutput output = run_script(script, 3);
+    int result = assert_output_matches(output, expected, 3, "Negative ID");
     free_output(&output);
+    return result;
 }
 
-void test_duplicate_id() {
+int test_duplicate_id() {
     remove_database();
     const char *script[] = {
         "insert 1 user1 person1@example.com",
@@ -292,12 +327,15 @@ void test_duplicate_id() {
         "Executed.",
         "db > "
     };
-    script_output output = run_script(script, 4);
-    assert_output_matches(output, expected, 5, "Duplicate ID");
+
+    printf(COLOR_MAGENTA "\n=== Testing Duplicate ID ===\n" COLOR_RESET);
+    ScriptOutput output = run_script(script, 4);
+    int result = assert_output_matches(output, expected, 5, "Duplicate ID");
     free_output(&output);
+    return result;
 }
 
-void test_btree_one_node() {
+int test_btree_one_node() {
     remove_database();
     const char *script[] = {
         "insert 3 user3 person3@example.com",
@@ -317,12 +355,15 @@ void test_btree_one_node() {
         "  - 3",
         "db > "
     };
-    script_output output = run_script(script, 5);
-    assert_output_matches(output, expected, 9, "B-tree one node");
+
+    printf(COLOR_MAGENTA "\n=== Testing B-tree One Node ===\n" COLOR_RESET);
+    ScriptOutput output = run_script(script, 5);
+    int result = assert_output_matches(output, expected, 9, "B-tree one node");
     free_output(&output);
+    return result;
 }
 
-void test_btree_three_leaf_nodes() {
+int test_btree_three_leaf_nodes() {
     remove_database();
     const char *script[17];
     char commands[15][50];
@@ -359,12 +400,14 @@ void test_btree_three_leaf_nodes() {
         "db > "
     };
 
-    script_output output = run_script(script, 17);
-    assert_output_ends_with(output, expected, 21, "B-tree three leaf nodes");
+    printf(COLOR_MAGENTA "\n=== Testing B-tree Three Leaf Nodes ===\n" COLOR_RESET);
+    ScriptOutput output = run_script(script, 17);
+    int result = assert_output_ends_with(output, expected, 21, "B-tree three leaf nodes");
     free_output(&output);
+    return result;
 }
 
-void test_print_constants() {
+int test_print_constants() {
     remove_database();
     const char *script[] = {".constants", ".exit"};
     const char *expected[] = {
@@ -377,12 +420,15 @@ void test_print_constants() {
         "LEAF_NODE_MAX_CELLS: 13",
         "db > "
     };
-    script_output output = run_script(script, 2);
-    assert_output_matches(output, expected, 8, "Print constants");
+
+    printf(COLOR_MAGENTA "\n=== Testing Print Constants ===\n" COLOR_RESET);
+    ScriptOutput output = run_script(script, 2);
+    int result = assert_output_matches(output, expected, 8, "Print constants");
     free_output(&output);
+    return result;
 }
 
-void test_print_all_rows() {
+int test_print_all_rows() {
     remove_database();
     char **script = malloc(17 * sizeof(char *));
     for (int i = 1; i <= 15; i++) {
@@ -412,26 +458,43 @@ void test_print_all_rows() {
         "db > "
     };
 
-    script_output output = run_script((const char **)script, 17);
-    assert_output_ends_with(output, expected, 17, "Print all rows");
+    printf(COLOR_MAGENTA "\n=== Testing Print All Rows ===\n" COLOR_RESET);
+    ScriptOutput output = run_script((const char **)script, 17);
+    int result = assert_output_ends_with(output, expected, 17, "Print all rows");
 
     for (int i = 0; i < 15; i++) free(script[i]);
     free(script);
     free_output(&output);
+    return result;
 }
 
 int main() {
-    test_insert_and_retrieve_row();
-    test_persistent_data();
-    test_table_full();
-    test_max_length_strings();
-    test_too_long_strings();
-    test_negative_id();
-    test_duplicate_id();
-    test_btree_one_node();
-    test_btree_three_leaf_nodes();
-    test_print_constants();
-    test_print_all_rows();
-    printf("All tests completed.\n");
-    return 0;
+    int passed = 0, failed = 0;
+
+    printf(COLOR_BLUE BOLD "\n===== Starting Database Tests =====\n" COLOR_RESET);
+
+    if (test_insert_and_retrieve_row()) passed++; else failed++;
+    if (test_persistent_data()) passed++; else failed++;
+    if (test_table_full()) passed++; else failed++;
+    if (test_max_length_strings()) passed++; else failed++;
+    if (test_too_long_strings()) passed++; else failed++;
+    if (test_negative_id()) passed++; else failed++;
+    if (test_duplicate_id()) passed++; else failed++;
+    if (test_btree_one_node()) passed++; else failed++;
+    if (test_btree_three_leaf_nodes()) passed++; else failed++;
+    if (test_print_constants()) passed++; else failed++;
+    if (test_print_all_rows()) passed++; else failed++;
+
+    printf(COLOR_BLUE BOLD "\n===== Test Summary =====\n" COLOR_RESET);
+    printf("Tests Passed: " COLOR_GREEN BOLD "%d\n" COLOR_RESET, passed);
+    printf("Tests Failed: " COLOR_RED BOLD "%d\n" COLOR_RESET, failed);
+    printf("Total Tests:  " COLOR_CYAN BOLD "%d\n" COLOR_RESET, passed + failed);
+
+    if (failed == 0) {
+        printf(COLOR_GREEN BOLD "\nALL TESTS PASSED SUCCESSFULLY!\n" COLOR_RESET);
+    } else {
+        printf(COLOR_RED BOLD "\nSOME TESTS FAILED!\n" COLOR_RESET);
+    }
+
+    return failed == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
