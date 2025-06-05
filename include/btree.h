@@ -77,13 +77,14 @@ void leaf_node_split_and_insert(cursor *cursor, uint32_t key, row *value);
 void print_constants();
 void print_tree(pager *pager, uint32_t page_num, uint32_t indentation_level);
 void create_new_root(table *table, uint32_t right_child_page_num);
-uint32_t* internal_node_num_keys(void* node);
-uint32_t* internal_node_right_child(void* node);
-uint32_t* internal_node_cell(void* node, uint32_t cell_num);
-uint32_t* internal_node_child(void* node, uint32_t child_num);
-uint32_t* internal_node_key(void* node, uint32_t key_num);
-uint32_t get_node_max_key(void* node);
-bool is_node_root(void* node);
-void set_node_root(void* node, bool is_root);
+uint32_t *internal_node_num_keys(void *node);
+uint32_t *internal_node_right_child(void *node);
+uint32_t *internal_node_cell(void *node, uint32_t cell_num);
+uint32_t *internal_node_child(void *node, uint32_t child_num);
+uint32_t *internal_node_key(void *node, uint32_t key_num);
+uint32_t get_node_max_key(void *node);
+bool is_node_root(void *node);
+void set_node_root(void *node, bool is_root);
+cursor *internal_node_find(table *table, uint32_t page_num, uint32_t key);
 
 #endif // !BTREE_H
