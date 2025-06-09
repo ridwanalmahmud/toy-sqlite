@@ -7,7 +7,7 @@
                     "regexp": "\\[FAIL\\] (.+):",
                     "message": 1,
                     "file": 1,
-                    "severity": "error"
+                    "severity": 1,
                 }
             ]
         }
