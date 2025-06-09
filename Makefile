@@ -2,7 +2,17 @@
 CC = clang
 INCDIRS = -Iinclude
 OPT = -O1
-CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT) --target=x86_64-linux-gnu
+
+ifndef TARGET
+    ARCH := $(shell uname -m)
+    ifeq ($(ARCH),aarch64)
+        TARGET := aarch64-linux-gnu
+    else
+        TARGET := x86_64-linux-gnu
+    endif
+endif
+
+CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT) --target=$(TARGET)
 
 # Directories
 SRC_DIR = src

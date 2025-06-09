@@ -24,8 +24,10 @@ jobs:
 
     - name: Build project
       run: |
+        make clean
         mkdir -p bin
         make
+        make clean-obj
 
     - name: Build tests
       run: |
