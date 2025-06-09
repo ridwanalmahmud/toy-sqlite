@@ -1,0 +1,50 @@
+name: Database CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      TERM: xterm-256color  # Enable color output
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install build-essential -y
+        sudo apt-get install gcc make -y
+
+    - name: Build project
+      run: |
+        make
+
+    - name: Build tests
+      run: |
+        make build-test
+
+    - name: Run tests
+      run: |
+        # Capture colored output correctly
+        echo "::add-matcher::.github/test-matcher.json"
+        make test | tee test-output.log
+        echo "::remove-matcher owner=test-matcher::"
+
+        # Fail if any tests failed
+        if grep -q "SOME TESTS FAILED" test-output.log; then
+          exit 1
+        fi
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: test-output.log
