@@ -2,7 +2,7 @@
 CC = gcc
 INCDIRS = -Iinclude
 OPT = -O1
-CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT)
+CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT) -DARCH_X64
 
 # Directories
 SRC_DIR = src
