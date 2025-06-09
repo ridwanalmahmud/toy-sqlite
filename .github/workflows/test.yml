@@ -20,10 +20,11 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install build-essential -y
-        sudo apt-get install gcc make -y
+        sudo apt-get install clang make -y
 
     - name: Build project
       run: |
+        mkdir -p bin
         make
 
     - name: Build tests

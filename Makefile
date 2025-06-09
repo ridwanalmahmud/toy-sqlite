@@ -1,8 +1,8 @@
 # Compiler and flags
-CC = gcc
+CC = clang
 INCDIRS = -Iinclude
 OPT = -O1
-CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT) -DARCH_X64
+CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT) --target=x86_64-linux-gnu
 
 # Directories
 SRC_DIR = src
