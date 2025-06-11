@@ -1,10 +1,6 @@
 ### Prerequisite
 ```
-pacman -S make gcc
-```
-- Addind a symlink for cleaner include?
-```
-cd src && ln -s ../include include
+pacman -S make clang
 ```
 
 ### Makefile
@@ -17,6 +13,14 @@ make
 ```
 make run <db_name>
 ```
+- Build the tests
+```
+make build-test
+```
+- Build and run the tests
+```
+make test
+```
 - Remove the object files directory
 ```
 make clean-obj
@@ -28,18 +32,6 @@ make clean-test
 - Remove the executables and the obj dir
 ```
 make clean
-```
-- Build the tests
-```
-make build-test
-```
-- Run the tests
-```
-make run-test
-```
-- Build and run the tests
-```
-make test
 ```
 
 ### Supported commands
