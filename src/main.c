@@ -1,6 +1,6 @@
-#include "../include/db.h"
-#include "../include/vm.h"
-#include "../include/query.h"
+#include "include/db.h"
+#include "include/vm.h"
+#include "include/query.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {

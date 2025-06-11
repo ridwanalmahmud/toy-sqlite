@@ -2,6 +2,10 @@
 ```
 pacman -S make gcc
 ```
+- Addind a symlink for cleaner include?
+```
+cd src && ln -s ../include include
+```
 
 ### Makefile
 

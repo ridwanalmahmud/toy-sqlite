@@ -1,6 +1,6 @@
-#include "../include/db.h"
-#include "../include/pager.h"
-#include "../include/btree.h"
+#include "include/db.h"
+#include "include/pager.h"
+#include "include/btree.h"
 
 input_buffer *new_input_buffer() {
     input_buffer *input_buff = malloc(sizeof(input_buffer));

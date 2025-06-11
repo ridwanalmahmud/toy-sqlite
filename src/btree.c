@@ -1,4 +1,4 @@
-#include "../include/btree.h"
+#include "include/btree.h"
 
 node_type get_node_type(void *node) {
     uint8_t value = *((uint8_t *)(node + NODE_TYPE_OFFSET));

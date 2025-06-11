@@ -1,4 +1,4 @@
-#include "../include/vm.h"
+#include "include/vm.h"
 
 meta_command_result do_meta_command(input_buffer *input_buffer, table *table) {
     if (strcmp(input_buffer->buffer, ".exit") == 0) {
