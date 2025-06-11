@@ -1,4 +1,4 @@
-#include "include/cursor.h"
+#include "cursor.h"
 
 cursor *table_find(table *table, uint32_t key) {
     uint32_t root_page_num = table->root_page_num;

@@ -1,4 +1,4 @@
-#include "include/pager.h"
+#include "pager.h"
 
 void *get_page(pager *pager, uint32_t page_num) {
     if (page_num > TABLE_MAX_PAGES) {

@@ -1,92 +1,63 @@
 # Compiler and flags
 CC = clang
-INCDIRS = -Iinclude
+INCDIRS = -I$(CURDIR)/include
 OPT = -O1
 
-ifndef TARGET
-    ARCH := $(shell uname -m)
-    ifeq ($(ARCH),aarch64)
-        TARGET := aarch64-linux-gnu
-    else
-        TARGET := x86_64-linux-gnu
-    endif
-endif
-
-CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT) --target=$(TARGET)
+CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT) --target=$(shell uname -m)-linux-gnu
 
 # Directories
 SRC_DIR = src
 OBJ_DIR = obj
 BIN_DIR = bin
-INC_DIR = include
 TEST_DIR = tests
+TEST_OBJ_DIR = $(TEST_DIR)/obj
+
+# Files
+SRCS = $(wildcard $(SRC_DIR)/*.c)
+OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
+TEST_SRCS = $(wildcard $(TEST_DIR)/*.c)
+TEST_OBJS = $(patsubst $(TEST_DIR)/%.c,$(TEST_OBJ_DIR)/%.o,$(TEST_SRCS))
 
 # Executables
 EXEC = $(BIN_DIR)/db
-TEST_EXEC = $(TEST_DIR)/dbtest
+TEST_EXEC = $(BIN_DIR)/dbtest
 
-# Source files
-SRCS = $(wildcard $(SRC_DIR)/*.c)
-OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
+.PHONY: all build-test test clean
 
-# Phony targets
-.PHONY: all run test build-test clean clean-obj
-
-# Default target
 all: $(EXEC)
 
-# Rule to build main executable only if it doesn't exist
-$(EXEC): | $(BIN_DIR)
-	@if [ ! -f "$(EXEC)" ]; then \
-		echo "Building database executable..."; \
-		mkdir -p $(OBJ_DIR); \
-		for src in $(SRCS); do \
-			obj=$(OBJ_DIR)/$$(basename $${src%.c}.o); \
-			$(CC) $(CFLAGS) -c $$src -o $$obj; \
-		done; \
-		$(CC) $(CFLAGS) $(OBJS) -o $(EXEC); \
-	else \
-		echo "Database executable already exists"; \
-	fi
+# Main executable
+$(EXEC): $(OBJS) | $(BIN_DIR)
+	$(CC) $(CFLAGS) $^ -o $@
 
-# Rule to build test executable only if it doesn't exist
-$(TEST_EXEC): | $(TEST_DIR)
-	@if [ ! -f "$(TEST_EXEC)" ]; then \
-		echo "Building test executable..."; \
-		$(CC) $(CFLAGS) $(wildcard $(TEST_DIR)/*.c) -o $(TEST_EXEC); \
-	else \
-		echo "Test executable already exists"; \
-	fi
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Directory creation
-$(BIN_DIR) $(TEST_DIR):
-	mkdir -p $@
-
-# Run command - uses existing executable or builds if missing
-run: $(EXEC)
-	@$(EXEC) $(filter-out $@,$(MAKECMDGOALS))
-
-# Test command - uses existing test executable or builds if missing
-test: $(TEST_EXEC)
-	@$(TEST_EXEC) $(filter-out $@,$(MAKECMDGOALS))
-
-# Build test explicitly
+# Test executable
 build-test: $(TEST_EXEC)
 
-# Clean object files only
+$(TEST_EXEC): $(TEST_OBJS) | $(BIN_DIR)
+	$(CC) $(CFLAGS) $^ -o $@
+
+$(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.c | $(TEST_OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Directory creation
+$(BIN_DIR) $(OBJ_DIR) $(TEST_OBJ_DIR):
+	mkdir -p $@
+
+# Test command
+test: build-test
+	@$(TEST_EXEC)
+
 clean-obj:
-	rm -rf $(OBJ_DIR)
-	@echo "Object files removed"
+	rm -rf $(OBJ_DIR) $(TEST_OBJ_DIR)
 
-# Clean test files only
 clean-test:
-	rm -rf $(TEST_EXEC)
-	rm -rf test.db
-	@echo "Test files removed"
+	rm -rf $(TEST_EXEC) $(TEST_OBJ_DIR)
 
-# Clean everything
 clean: clean-obj clean-test
-	rm -rf $(BIN_DIR) $(TEST_EXEC)
+	rm -rf $(BIN_DIR)
 	@echo "All build artifacts removed"
 
 # Handle arguments

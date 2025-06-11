@@ -1,4 +1,4 @@
-#include "include/query.h"
+#include "query.h"
 
 execute_result execute_insert(statement *statement, table *table) {
     row *row_to_insert = &(statement->row_to_insert);
