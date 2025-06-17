@@ -1,6 +1,6 @@
 #include "vm.h"
 
-meta_command_result do_meta_command(input_buffer *input_buffer, table *table) {
+meta_command_result do_meta_command(InputBuffer *input_buffer, Table *table) {
     if (strcmp(input_buffer->buffer, ".exit") == 0) {
         close_input_buffer(input_buffer);
         db_close(table);
@@ -18,8 +18,8 @@ meta_command_result do_meta_command(input_buffer *input_buffer, table *table) {
     }
 }
 
-prepare_result prepare_insert(input_buffer *input_buffer,
-                              statement *statement) {
+prepare_result prepare_insert(InputBuffer *input_buffer,
+                              Statement *statement) {
     statement->type = STATEMENT_INSERT;
 
     char *keyword = strtok(input_buffer->buffer, " ");
@@ -49,8 +49,8 @@ prepare_result prepare_insert(input_buffer *input_buffer,
     return PREPARE_SUCCESS;
 }
 
-prepare_result prepare_statement(input_buffer *input_buffer,
-                                 statement *statement) {
+prepare_result prepare_statement(InputBuffer *input_buffer,
+                                 Statement *statement) {
     if (strncmp(input_buffer->buffer, "insert", 6) == 0) {
         return prepare_insert(input_buffer, statement);
     }

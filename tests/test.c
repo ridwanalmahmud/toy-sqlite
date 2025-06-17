@@ -25,7 +25,7 @@ typedef struct {
     int count;
 } ScriptOutput;
 
-void remove_database() {
+void remove_database(void) {
     remove("test.db");
 }
 
@@ -64,7 +64,7 @@ ScriptOutput run_script(const char *commands[], int num_commands) {
         close(stdin_pipe[0]);
         close(stdout_pipe[1]);
 
-        execl("bin/db", "db", "test.db", (char *)NULL);
+        execl("build/db", "db", "test.db", (char *)NULL);
         perror("execl");
         exit(EXIT_FAILURE);
     } else {
@@ -173,7 +173,7 @@ int assert_output_ends_with(ScriptOutput output, const char *expected[], int exp
     return 1;
 }
 
-int test_insert_and_retrieve_row() {
+int test_insert_and_retrieve_row(void) {
     remove_database();
     const char *script[] = {
         "insert 1 user1 person1@example.com",
@@ -193,7 +193,7 @@ int test_insert_and_retrieve_row() {
     return result;
 }
 
-int test_persistent_data() {
+int test_persistent_data(void) {
     remove_database();
     const char *script1[] = {"insert 1 user1 person1@example.com", ".exit"};
     const char *script2[] = {"select", ".exit"};
@@ -216,7 +216,7 @@ int test_persistent_data() {
     return result1 && result2;
 }
 
-int test_table_full() {
+int test_table_full(void) {
     remove_database();
     char **script = malloc(1402 * sizeof(char *));
     for (int i = 1; i <= 1401; i++) {
@@ -237,7 +237,7 @@ int test_table_full() {
     return result;
 }
 
-int test_max_length_strings() {
+int test_max_length_strings(void) {
     remove_database();
     char long_username[33], long_email[256];
     memset(long_username, 'a', 32);
@@ -267,7 +267,7 @@ int test_max_length_strings() {
     return result;
 }
 
-int test_too_long_strings() {
+int test_too_long_strings(void) {
     remove_database();
     char long_username[34], long_email[257];
     memset(long_username, 'a', 33);
@@ -292,7 +292,7 @@ int test_too_long_strings() {
     return result;
 }
 
-int test_negative_id() {
+int test_negative_id(void) {
     remove_database();
     const char *script[] = {
         "insert -1 cstack foo@bar.com",
@@ -312,7 +312,7 @@ int test_negative_id() {
     return result;
 }
 
-int test_duplicate_id() {
+int test_duplicate_id(void) {
     remove_database();
     const char *script[] = {
         "insert 1 user1 person1@example.com",
@@ -335,7 +335,7 @@ int test_duplicate_id() {
     return result;
 }
 
-int test_btree_one_node() {
+int test_btree_one_node(void) {
     remove_database();
     const char *script[] = {
         "insert 3 user3 person3@example.com",
@@ -363,7 +363,7 @@ int test_btree_one_node() {
     return result;
 }
 
-int test_btree_three_leaf_nodes() {
+int test_btree_three_leaf_nodes(void) {
     remove_database();
     const char *script[17];
     char commands[15][50];
@@ -407,7 +407,7 @@ int test_btree_three_leaf_nodes() {
     return result;
 }
 
-int test_print_constants() {
+int test_print_constants(void) {
     remove_database();
     const char *script[] = {".constants", ".exit"};
     const char *expected[] = {
@@ -428,7 +428,7 @@ int test_print_constants() {
     return result;
 }
 
-int test_print_all_rows() {
+int test_print_all_rows(void) {
     remove_database();
     char **script = malloc(17 * sizeof(char *));
     for (int i = 1; i <= 15; i++) {
@@ -468,7 +468,7 @@ int test_print_all_rows() {
     return result;
 }
 
-int main() {
+int main(void) {
     int passed = 0, failed = 0;
 
     printf(COLOR_BLUE BOLD "\n===== Starting Database Tests =====\n" COLOR_RESET);

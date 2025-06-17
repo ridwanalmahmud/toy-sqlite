@@ -9,9 +9,9 @@ int main(int argc, char *argv[]) {
     }
 
     char *filename = argv[1];
-    table *table = db_open(filename);
+    Table *table = db_open(filename);
 
-    input_buffer *input_buffer = new_input_buffer();
+    InputBuffer *input_buffer = new_input_buffer();
     while (true) {
         printf("db > ");
         read_input(input_buffer);
@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        statement statement;
+        Statement statement;
         switch (prepare_statement(input_buffer, &statement)) {
         case (PREPARE_SUCCESS):
             break;

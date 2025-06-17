@@ -1,6 +1,6 @@
 #include "pager.h"
 
-void *get_page(pager *pager, uint32_t page_num) {
+void *get_page(Pager *pager, uint32_t page_num) {
     if (page_num > TABLE_MAX_PAGES) {
         printf("Tried to fetch page number out of bounds. %d > %d\n",
                page_num,
@@ -41,11 +41,11 @@ void *get_page(pager *pager, uint32_t page_num) {
 Until we start recycling free pages, new pages will always
 go onto the end of the database file
 */
-uint32_t get_unused_page_num(pager *pager) {
+uint32_t get_unused_page_num(Pager *pager) {
     return pager->num_pages;
 }
 
-pager *pager_open(const char *filename) {
+Pager *pager_open(const char *filename) {
     int fd = open(filename,
                   O_RDWR | // Read/Write mode
                       O_CREAT, // Create file if it does not exist
@@ -60,10 +60,10 @@ pager *pager_open(const char *filename) {
 
     off_t file_length = lseek(fd, 0, SEEK_END);
 
-    pager *cur_pager = malloc(sizeof(pager));
-    cur_pager->file_descriptor = fd;
-    cur_pager->file_length = file_length;
-    cur_pager->num_pages = (file_length / PAGE_SIZE);
+    Pager *pager = malloc(sizeof(Pager));
+    pager->file_descriptor = fd;
+    pager->file_length = file_length;
+    pager->num_pages = (file_length / PAGE_SIZE);
 
     if (file_length % PAGE_SIZE != 0) {
         printf("Db file is not a whole number of pages. Corrupt file.\n");
@@ -71,13 +71,13 @@ pager *pager_open(const char *filename) {
     }
 
     for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
-        cur_pager->pages[i] = NULL;
+        pager->pages[i] = NULL;
     }
 
-    return cur_pager;
+    return pager;
 }
 
-void pager_flush(pager *pager, uint32_t page_num) {
+void pager_flush(Pager *pager, uint32_t page_num) {
     if (pager->pages[page_num] == NULL) {
         printf("Tried to flush null page\n");
         exit(EXIT_FAILURE);

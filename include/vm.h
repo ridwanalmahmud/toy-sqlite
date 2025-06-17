@@ -1,5 +1,5 @@
-#ifndef VM_H
-#define VM_H
+#ifndef _VM_H
+#define _VM_H
 
 #include "db.h"
 #include "query.h"
@@ -18,9 +18,9 @@ typedef enum {
 } prepare_result;
 
 // VM functions
-meta_command_result do_meta_command(input_buffer *input_buffer, table *table);
-prepare_result prepare_statement(input_buffer *input_buffer,
-                                 statement *statement);
-prepare_result prepare_insert(input_buffer *input_buffer, statement *statement);
+meta_command_result do_meta_command(InputBuffer *input_buffer, Table *table);
+prepare_result prepare_statement(InputBuffer *input_buffer,
+                                 Statement *statement);
+prepare_result prepare_insert(InputBuffer *input_buffer, Statement *statement);
 
-#endif // !VM_H
+#endif // !_VM_H

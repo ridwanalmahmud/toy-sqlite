@@ -1,13 +1,13 @@
-#ifndef CURSOR_H
-#define CURSOR_H
+#ifndef _CURSOR_H
+#define _CURSOR_H
 
 #include "db.h"
 #include "btree.h"
 
 // cursor functions
-cursor *table_start(table *table);
-cursor *table_find(table *table, uint32_t key);
-void *cursor_value(cursor *cursor);
-void cursor_advance(cursor *cursor);
+Cursor *table_start(Table *table);
+Cursor *table_find(Table *table, uint32_t key);
+void *cursor_value(Cursor *cursor);
+void cursor_advance(Cursor *cursor);
 
-#endif // !CURSOR_H
+#endif // !_CURSOR_H

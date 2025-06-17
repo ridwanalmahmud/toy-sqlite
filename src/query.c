@@ -1,9 +1,9 @@
 #include "query.h"
 
-execute_result execute_insert(statement *statement, table *table) {
-    row *row_to_insert = &(statement->row_to_insert);
+ExecuteResult execute_insert(Statement *statement, Table *table) {
+    Row *row_to_insert = &(statement->row_to_insert);
     uint32_t key_to_insert = row_to_insert->id;
-    cursor *cursor = table_find(table, key_to_insert);
+    Cursor *cursor = table_find(table, key_to_insert);
 
     void *node = get_page(table->pager, cursor->page_num);
     uint32_t num_cells = *leaf_node_num_cells(node);
@@ -22,10 +22,10 @@ execute_result execute_insert(statement *statement, table *table) {
     return EXECUTE_SUCCESS;
 }
 
-execute_result execute_select(statement *statement, table *table) {
-    cursor *cursor = table_start(table);
+ExecuteResult execute_select(Statement *statement, Table *table) {
+    Cursor *cursor = table_start(table);
 
-    row row;
+    Row row;
     while (!(cursor->end_of_table)) {
         deserialize_row(cursor_value(cursor), &row);
         print_row(&row);
@@ -37,7 +37,7 @@ execute_result execute_select(statement *statement, table *table) {
     return EXECUTE_SUCCESS;
 }
 
-execute_result execute_statement(statement *statement, table *table) {
+ExecuteResult execute_statement(Statement *statement, Table *table) {
     switch (statement->type) {
     case (STATEMENT_INSERT):
         return execute_insert(statement, table);

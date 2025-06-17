@@ -3,7 +3,7 @@ CC = clang
 INCDIRS = -I$(CURDIR)/include
 OPT = -O1
 
-CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT) --target=$(shell uname -m)-linux-gnu
+CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT)
 
 # Directories
 SRC_DIR = src

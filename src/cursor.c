@@ -1,6 +1,6 @@
 #include "cursor.h"
 
-cursor *table_find(table *table, uint32_t key) {
+Cursor *table_find(Table *table, uint32_t key) {
     uint32_t root_page_num = table->root_page_num;
     void *root_node = get_page(table->pager, root_page_num);
 
@@ -11,8 +11,8 @@ cursor *table_find(table *table, uint32_t key) {
     }
 }
 
-cursor *table_start(table *table) {
-    cursor *cursor = table_find(table, 0);
+Cursor *table_start(Table *table) {
+    Cursor *cursor = table_find(table, 0);
 
     void *node = get_page(table->pager, cursor->page_num);
     uint32_t num_cells = *leaf_node_num_cells(node);
@@ -21,13 +21,13 @@ cursor *table_start(table *table) {
     return cursor;
 }
 
-void *cursor_value(cursor *cursor) {
+void *cursor_value(Cursor *cursor) {
     uint32_t page_num = cursor->page_num;
     void *page = get_page(cursor->table->pager, page_num);
     return leaf_node_value(page, cursor->cell_num);
 }
 
-void cursor_advance(cursor *cursor) {
+void cursor_advance(Cursor *cursor) {
     uint32_t page_num = cursor->page_num;
     void *node = get_page(cursor->table->pager, page_num);
 

@@ -25,7 +25,7 @@ jobs:
     - name: Build project
       run: |
         make clean
-        mkdir -p bin
+        mkdir -p build
         make
         make clean-obj
 

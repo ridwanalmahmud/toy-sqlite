@@ -1,5 +1,5 @@
-#ifndef BTREE_H
-#define BTREE_H
+#ifndef _BTREE_H
+#define _BTREE_H
 
 #include "db.h"
 #include "pager.h"
@@ -7,7 +7,7 @@
 typedef enum {
     NODE_INTERNAL,
     NODE_LEAF,
-} node_type;
+} NodeType;
 
 /*
  * Common Node Header Layout
@@ -76,30 +76,30 @@ uint32_t *leaf_node_num_cells(void *node);
 void *leaf_node_cell(void *node, uint32_t cell_num);
 uint32_t *leaf_node_key(void *node, uint32_t cell_num);
 void *leaf_node_value(void *node, uint32_t cell_num);
-node_type get_node_type(void *node);
-void set_node_type(void *node, node_type type);
-cursor *leaf_node_find(table *table, uint32_t page_num, uint32_t key);
+NodeType get_node_type(void *node);
+void set_node_type(void *node, NodeType type);
+Cursor *leaf_node_find(Table *table, uint32_t page_num, uint32_t key);
 uint32_t *leaf_node_next_leaf(void *node);
 void initialize_leaf_node(void *node);
 void initialize_internal_node(void *node);
-void leaf_node_insert(cursor *cursor, uint32_t key, row *value);
-void leaf_node_split_and_insert(cursor *cursor, uint32_t key, row *value);
-void print_constants();
-void print_tree(pager *pager, uint32_t page_num, uint32_t indentation_level);
-void create_new_root(table *table, uint32_t right_child_page_num);
+void leaf_node_insert(Cursor *cursor, uint32_t key, Row *value);
+void leaf_node_split_and_insert(Cursor *cursor, uint32_t key, Row *value);
+void print_constants(void);
+void print_tree(Pager *pager, uint32_t page_num, uint32_t indentation_level);
+void create_new_root(Table *table, uint32_t right_child_page_num);
 uint32_t *internal_node_num_keys(void *node);
 uint32_t *internal_node_right_child(void *node);
 uint32_t *internal_node_cell(void *node, uint32_t cell_num);
 uint32_t *internal_node_child(void *node, uint32_t child_num);
 uint32_t *internal_node_key(void *node, uint32_t key_num);
-uint32_t get_node_max_key(pager *pager, void *node);
+uint32_t get_node_max_key(Pager *pager, void *node);
 bool is_node_root(void *node);
 void set_node_root(void *node, bool is_root);
-cursor *internal_node_find(table *table, uint32_t page_num, uint32_t key);
+Cursor *internal_node_find(Table *table, uint32_t page_num, uint32_t key);
 uint32_t *node_parent(void *node);
 void update_internal_node_key(void *node, uint32_t old_key, uint32_t new_key);
-void internal_node_insert(table *table,
+void internal_node_insert(Table *table,
                           uint32_t parent_page_num,
                           uint32_t child_page_num);
 
-#endif // !BTREE_H
+#endif // !_BTREE_H

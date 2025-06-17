@@ -1,5 +1,5 @@
-#ifndef QUERY_H
-#define QUERY_H
+#ifndef _QUERY_H
+#define _QUERY_H
 
 #include "db.h"
 #include "btree.h"
@@ -8,20 +8,20 @@
 typedef enum {
     EXECUTE_SUCCESS,
     EXECUTE_DUPLICATE_KEY,
-} execute_result;
+} ExecuteResult;
 
 typedef enum {
     STATEMENT_INSERT,
     STATEMENT_SELECT,
-} statement_type;
+} StatementType;
 
 typedef struct {
-    statement_type type;
-    row row_to_insert;
-} statement;
+    StatementType type;
+    Row row_to_insert;
+} Statement;
 
-execute_result execute_insert(statement *statement, table *table);
-execute_result execute_select(statement *statement, table *table);
-execute_result execute_statement(statement *statement, table *table);
+ExecuteResult execute_insert(Statement *statement, Table *table);
+ExecuteResult execute_select(Statement *statement, Table *table);
+ExecuteResult execute_statement(Statement *statement, Table *table);
 
-#endif // !QUERY_H
+#endif // !_QUERY_H
