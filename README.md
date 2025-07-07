@@ -13,10 +13,6 @@ make
 ```
 make run <db_name>
 ```
-- Build the tests
-```
-make build-test
-```
 - Build and run the tests
 ```
 make test
@@ -50,4 +46,8 @@ insert <id> <key> <value>
 - To print out the database
 ```
 .select
+```
+- To save and exit the database
+```
+.exit
 ```

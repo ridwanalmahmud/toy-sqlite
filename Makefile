@@ -1,65 +1,51 @@
-# Compiler and flags
-CC = clang
-INCDIRS = -I$(CURDIR)/include
-OPT = -O1
+CC=clang
+INCDIR=include
+SRCDIR=src
+OBJDIR=obj
+TESTDIR=tests
+BUILDDIR=build
+TESTOBJDIR=$(TESTDIR)/obj
+CFLAGS=-Wall -Wextra -g -I$(INCDIR) -pedantic -pipe
 
-CFLAGS = -Wall -Wextra -g $(INCDIRS) $(OPT)
+SRCS=$(wildcard $(SRCDIR)/*.c)
+OBJS=$(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
+TESTSRCS=$(wildcard $(TESTDIR)/*.c)
+TESTOBJS=$(patsubst $(TESTDIR)/%.c, $(TESTOBJDIR)/%.o, $(TESTSRCS))
 
-# Directories
-SRC_DIR = src
-OBJ_DIR = obj
-BIN_DIR = bin
-TEST_DIR = tests
-TEST_OBJ_DIR = $(TEST_DIR)/obj
-
-# Files
-SRCS = $(wildcard $(SRC_DIR)/*.c)
-OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
-TEST_SRCS = $(wildcard $(TEST_DIR)/*.c)
-TEST_OBJS = $(patsubst $(TEST_DIR)/%.c,$(TEST_OBJ_DIR)/%.o,$(TEST_SRCS))
-
-# Executables
-EXEC = $(BIN_DIR)/db
-TEST_EXEC = $(BIN_DIR)/dbtest
-
-.PHONY: all build-test test clean
+EXEC=$(BUILDDIR)/db
+TESTEXEC=$(BUILDDIR)/dbtest
 
 all: $(EXEC)
 
-# Main executable
-$(EXEC): $(OBJS) | $(BIN_DIR)
+run: all
+	./$(EXEC) $(filter-out $@, $(MAKECMDGOALS))
+
+$(EXEC): $(OBJS) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Test executable
-build-test: $(TEST_EXEC)
+test: $(TESTEXEC)
+	@$(TESTEXEC)
 
-$(TEST_EXEC): $(TEST_OBJS) | $(BIN_DIR)
+$(TESTEXEC): $(TESTOBJS) | $(TESTDIR)
 	$(CC) $(CFLAGS) $^ -o $@
 
-$(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.c | $(TEST_OBJ_DIR)
+$(TESTOBJDIR)/%.o: $(TESTDIR)/%.c | $(TESTOBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Directory creation
-$(BIN_DIR) $(OBJ_DIR) $(TEST_OBJ_DIR):
+$(BUILDDIR) $(OBJDIR) $(TESTOBJDIR):
 	mkdir -p $@
 
-# Test command
-test: build-test
-	@$(TEST_EXEC)
-
 clean-obj:
-	rm -rf $(OBJ_DIR) $(TEST_OBJ_DIR)
+	rm -rf $(OBJDIR) $(TESTOBJDIR)
 
 clean-test:
-	rm -rf $(TEST_EXEC) $(TEST_OBJ_DIR)
+	rm -rf $(TESTEXEC) $(TESTOBJDIR)
 
 clean: clean-obj clean-test
-	rm -rf $(BIN_DIR)
-	@echo "All build artifacts removed"
+	rm $(EXEC)
 
-# Handle arguments
 %:
 	@:
