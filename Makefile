@@ -1,27 +1,40 @@
 CC=clang
 INCDIR=include
 SRCDIR=src
-OBJDIR=obj
-TESTDIR=tests
 BUILDDIR=build
-TESTOBJDIR=$(TESTDIR)/obj
-CFLAGS=-Wall -Wextra -g -I$(INCDIR) -pedantic -pipe
+OBJDIR=$(BUILDDIR)/obj
+TESTDIR=tests
+TESTBUILDDIR=$(TESTDIR)/build
+TESTOBJDIR=$(TESTBUILDDIR)/obj
+OPT=-O2
+CFLAGS=-Wall -Wextra -I$(INCDIR) -pipe -pedantic -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE $(OPT) \
+	   -fstack-protector-all -fPIE -MMD -MP \
+	   -g
+LDFLAGS=-pie
+TESTLIB=-lgtest -lstdc++
 
 SRCS=$(wildcard $(SRCDIR)/*.c)
 OBJS=$(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
-TESTSRCS=$(wildcard $(TESTDIR)/*.c)
-TESTOBJS=$(patsubst $(TESTDIR)/%.c, $(TESTOBJDIR)/%.o, $(TESTSRCS))
-
+DEPS=$(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.d, $(SRCS))
 EXEC=$(BUILDDIR)/db
-TESTEXEC=$(BUILDDIR)/dbtest
+
+TESTSRCS=$(wildcard $(TESTDIR)/*.cpp)
+TESTOBJS=$(patsubst $(TESTDIR)/%.cpp, $(TESTOBJDIR)/%.o, $(TESTSRCS))
+TESTDEPS=$(patsubst $(TESTDIR)/%.cpp, $(TESTOBJDIR)/%.d, $(TESTSRCS))
+TESTEXEC=$(TESTBUILDDIR)/dbtest
+
+-include $(DEPS)
+-include $(TESTDEPS)
+
+.PHONY: all run test clean-obj clean-test clean
 
 all: $(EXEC)
 
-run: all
-	./$(EXEC) $(filter-out $@, $(MAKECMDGOALS))
+run: $(EXEC)
+	@$(EXEC)
 
 $(EXEC): $(OBJS) | $(BUILDDIR)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -29,13 +42,13 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
 test: $(TESTEXEC)
 	@$(TESTEXEC)
 
-$(TESTEXEC): $(TESTOBJS) | $(TESTDIR)
-	$(CC) $(CFLAGS) $^ -o $@
+$(TESTEXEC): $(TESTOBJS) $(filter-out $(OBJDIR)/main.o, $(OBJS)) | $(TESTBUILDDIR)
+	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@ $(TESTLIB)
 
-$(TESTOBJDIR)/%.o: $(TESTDIR)/%.c | $(TESTOBJDIR)
+$(TESTOBJDIR)/%.o: $(TESTDIR)/%.cpp | $(TESTOBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILDDIR) $(OBJDIR) $(TESTOBJDIR):
+$(BUILDDIR) $(OBJDIR) $(TESTBUILDDIR) $(TESTOBJDIR):
 	mkdir -p $@
 
 clean-obj:
@@ -47,5 +60,6 @@ clean-test:
 clean: clean-obj clean-test
 	rm $(EXEC)
 
+# only if passing arguments are needed
 %:
 	@:

@@ -1,6 +1,6 @@
 ### Prerequisite
 ```
-pacman -S make clang
+pacman -S make clang gtest
 ```
 
 ### Makefile

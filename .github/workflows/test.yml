@@ -29,10 +29,6 @@ jobs:
         make
         make clean-obj
 
-    - name: Build tests
-      run: |
-        make build-test
-
     - name: Run tests
       run: |
         # Capture colored output correctly
